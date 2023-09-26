@@ -6,20 +6,20 @@ import { useStore } from "vuex";
 const store = useStore();
 
 
-const userIdInStore = computed(() => store.state.userId);
-console.log('userId------from Home - ', userIdInStore)
-console.log('store.state.userId------from Home - ', store.state.userId)
-let apiUrlMyBicycleListForHomePage = null;
-if (userIdInStore) {
-  apiUrlMyBicycleListForHomePage = `/bicycles/?owner=${userIdInStore.value}`;
-}
-console.log('apiUrlMyBicycleListForHomePage------- from home-', apiUrlMyBicycleListForHomePage)
+const authTokenInStore = computed(() => store.state.authToken);
+console.log('authTokenInStore------from Home - ', authTokenInStore)
+console.log('store.state.authToken------from Home - ', store.state.authToken)
+//let apiUrlMyBicycleListForHomePage = null;
+//if (userIdInStore) {
+//  apiUrlMyBicycleListForHomePage = `/bicycles/?owner=${userIdInStore.value}`;
+//}
+//console.log('apiUrlMyBicycleListForHomePage------- from home-', apiUrlMyBicycleListForHomePage)
 </script>
 
 <template>
   <div class="container">
   
-    <div class="row" v-if="userIdInStore">
+    <div class="row" v-if="authTokenInStore">
       <!-- ДА -->
       Главная авторизованного пользователя
     </div>

@@ -12,10 +12,10 @@ const store = createStore({
   state: {
 
 
-    // authToken: null,
-    // userId: null,
-    authToken: 1,
-    userId: 1,
+     authToken: null,
+//     userId: null,
+//    authToken: 1,
+//    userId: 1,
 
 
 
@@ -27,13 +27,7 @@ const store = createStore({
     setAuthTokenFromLocalStorage(state, token) {
       state.authToken = token;
       customAxios.defaults.headers.common["Authorization"] = `Token ${token}`;
-      // console.log("сейчас вызовется фетч");
-      // state.userId = fetchUserId(token);
-      // state.userId = await fetchUserId(token);
-      // fetchUserId(token).then(userId => {
-      //   state.userId = userId; // Присваиваем userId после разрешения промиса
-      //   });
-      // console.log('fetchUserId при Локал Сторе вернул -------', state.userId)
+
     },
     setAuthTokenFromApi(state, token) {
       localStorage.setItem("authToken", token);
@@ -45,17 +39,17 @@ const store = createStore({
       state.authToken = null;
       customAxios.defaults.headers.common["Authorization"] = null;
     },
-    setUserIdFromLocalStorage(state, userId) {
-      state.userId = userId; // Сохраняем идентификатор пользователя
-    },
-    setUserIdFromFromApi(state, userId) {
-      localStorage.setItem("userId", userId);
-      state.userId = userId; // Сохраняем идентификатор пользователя
-    },
-    clearUserId(state) {
-      localStorage.removeItem("userId");
-      state.userId = null; // Сохраняем идентификатор пользователя
-    },
+//    setUserIdFromLocalStorage(state, userId) {
+//      state.userId = userId; // Сохраняем идентификатор пользователя
+//    },
+//    setUserIdFromFromApi(state, userId) {
+//      localStorage.setItem("userId", userId);
+//      state.userId = userId; // Сохраняем идентификатор пользователя
+//    },
+//    clearUserId(state) {
+//      localStorage.removeItem("userId");
+//      state.userId = null; // Сохраняем идентификатор пользователя
+//    },
   },
 });
 

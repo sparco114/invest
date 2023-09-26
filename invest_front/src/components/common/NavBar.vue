@@ -20,12 +20,17 @@ const redirectToRegistration = () => {
 // const userId = computed(() => store.state.userId);
 // TODO: перенести эту кнопку и логику в актуальное место на сайте, если потребуется
 const isLoggedIn = computed(() => store.state.authToken !== null);
+console.log("store.state.authToken-------", store.state.authToken);
+console.log("isLoggedIn-------", Boolean(isLoggedIn));
+
+
+
 // const userId = computed(() => store.state.userId);
 const logoutUser = () => {
   store.commit("clearAuthToken");
-  store.commit("clearUserId");
+//  store.commit("clearUserId");
   console.log("clearAuthToken-out", store.state.authToken);
-  console.log("clearUserId-out", store.state.userId);
+//  console.log("clearUserId-out", store.state.userId);
   router.push({ name: "user-login" });
 };
 </script>
@@ -72,17 +77,16 @@ const logoutUser = () => {
 
           <div class="col-auto border-dark">
             <RouterLink
-              v-if="store.state.userId"
-              class="btn btn-success border rounded-4"
+
+              class="btn btn-success border rounded-4 me-2"
               :to="{
                 name: 'profile-detail',
-                params: { id: store.state.userId },
               }"
             >
               Мой профиль
             </RouterLink>
 
-            <button class="btn text-white rounded-4" @click="logoutUser">
+            <button class="btn btn-success border rounded-4" @click="logoutUser">
               Выйти
             </button>
           </div>

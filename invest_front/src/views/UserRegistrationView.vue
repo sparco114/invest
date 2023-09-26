@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from "vue";
-// import axios from "axios";
 import customAxios from "../axios.js";
 import { useRouter } from "vue-router";
 

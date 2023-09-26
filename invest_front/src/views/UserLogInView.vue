@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from "vue";
-// import axios from "axios";
 import customAxios from "../axios.js"
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
@@ -25,15 +24,16 @@ const loginUser = async () => {
       }
     );
     const token = response.data.auth_token; // Предполагается, что сервер возвращает токен в поле 'auth_token'
-    const userId = response.data.user_id; // Предполагается, что сервер возвращает токен в поле 'user_id'
+//    const userId = response.data.user_id; // Предполагается, что сервер возвращает токен в поле 'user_id'
     credentialsErrorLogInMessage.value = "";
     otherErrorLogInMessage.value = "";
 
-    if (token && userId) {
+//    if (token && userId) {
+    if (token) {
       store.commit("setAuthTokenFromApi", token);
-      store.commit("setUserIdFromFromApi", userId);
+//      store.commit("setUserIdFromFromApi", userId);
       console.log("setAuthTokenFromApi--in", token);
-      console.log("setUserIdFromFromApi--in", userId);
+//      console.log("setUserIdFromFromApi--in", userId);
 
       
     } else {

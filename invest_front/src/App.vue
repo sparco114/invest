@@ -9,10 +9,14 @@ import NavBar from "./components/common/NavBar.vue";
     <NavBar />
   </header>
 
-  <div class="container mt-5">
+  <div class="container main-app-container">
     <RouterView />
   </div>
   <!-- <FooterBar /> -->
 </template>
 
-<style scoped></style>
+<style>
+.main-app-container {
+margin-top: 4rem;
+}
+</style>

@@ -10,17 +10,18 @@ import store from "./store";
 const app = createApp(App);
 
 const authToken = localStorage.getItem("authToken");
-const userId = localStorage.getItem("userId");
+//const userId = localStorage.getItem("userId");
 
 // TODO: проверить все ли случаи обрабатываются
-if (authToken && userId) {
+//if (authToken && userId) {
+if (authToken) {
   store.commit("setAuthTokenFromLocalStorage", authToken);
-  store.commit("setUserIdFromLocalStorage", userId);
+//  store.commit("setUserIdFromLocalStorage", userId);
   console.log("setAuthTokenFromLocalStorage--", authToken);
-  console.log("setUserIdFromLocalStorage--", userId);
+//  console.log("setUserIdFromLocalStorage--", userId);
 } else {
   store.commit("clearAuthToken");
-  store.commit("clearUserId");
+//  store.commit("clearUserId");
   console.log("Нет токена или userId в LocalStorage");
 }
 
