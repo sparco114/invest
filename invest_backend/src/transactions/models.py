@@ -7,7 +7,9 @@ class Transaction(models.Model):
     OPERATION_NAMES = [
         ('buy', 'Покупка'),
         ('sell', 'Продажа'),
-        ('transfer', 'Перевод'),
+        # ('transfer', 'Перевод'),
+
+        # TODO: для валюты нужны дополнительно операции 'Пополнение', 'Снятие/Расход'
     ]
 
     transaction_name = models.CharField(max_length=20, choices=OPERATION_NAMES)
