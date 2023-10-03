@@ -1,17 +1,19 @@
 from django.db import models
 from decimal import Decimal
 
+from src.attributes_list.models import Portfolio
+
 
 class Asset(models.Model):
     ticker = models.CharField(max_length=5)
     name = models.CharField(max_length=50, unique=True)
-    portfolio_name = models.CharField(max_length=20)
+    portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)
     agent = models.CharField(max_length=40)  # посредник
     stock_market = models.CharField(max_length=40)
     asset_class = models.CharField(max_length=40)
-    asset_type = models.CharField(max_length=40)
+    asset_type = models.CharField(max_length=40, blank=True, null=True)
     currency_of_price = models.CharField(max_length=10)  # валюта цены
-    region = models.CharField(max_length=40)
+    region = models.CharField(max_length=40, blank=True, null=True)
     currency_of_asset = models.CharField(max_length=10)  # валюта актива
     total_quantity = models.DecimalField(max_digits=18, decimal_places=8)
     # TODO: цена должна тянустья из таблицы, в которой будут храниться данные о ценах на все купленные активы.

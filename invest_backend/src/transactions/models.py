@@ -1,6 +1,7 @@
 from django.db import models
 
 from src.assets.models import Asset
+from src.attributes_list.models import Portfolio
 
 
 class Transaction(models.Model):
@@ -14,13 +15,13 @@ class Transaction(models.Model):
     transaction_name = models.CharField(max_length=20, choices=OPERATION_NAMES)
     ticker = models.ForeignKey(Asset, max_length=5, on_delete=models.CASCADE)
     asset_name = models.CharField(max_length=40)
-    portfolio_name = models.CharField(max_length=20)
+    portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)
     agent = models.CharField(max_length=40)  # посредник
     stock_market = models.CharField(max_length=40)
-    asset_class = models.CharField(max_length=40)
-    asset_type = models.CharField(max_length=40)
+    asset_class = models.CharField(max_length=40)  # класс актива (акции, облигации, крипта и тд)
+    asset_type = models.CharField(max_length=40, blank=True, null=True)  # вид актива (корпоративные, ОФЗ и тд)
     currency_of_price = models.CharField(max_length=10)  # валюта цены
-    region = models.CharField(max_length=40)
+    region = models.CharField(max_length=40, blank=True, null=True)
     currency_of_asset = models.CharField(max_length=10)  # валюта актива
     quantity = models.DecimalField(max_digits=18, decimal_places=8)
     one_unit_price_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # цена за единицу
@@ -31,7 +32,7 @@ class Transaction(models.Model):
 
     # TODO: скорее всего должны идти в другую таблицу (с расходами), а не в актив
     # TODO: должны прибавляться к общим затратам на актив?
-    deductions = models.DecimalField(max_digits=8, decimal_places=2)  # удержания
+    deductions = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)  # удержания
 
     currency_rate_to_rub = models.DecimalField(max_digits=8, decimal_places=2)  # текущий курс валюты к руб
 
@@ -41,7 +42,7 @@ class Transaction(models.Model):
 
     # TODO: написать на фронте логику, чтоб при заполнении deductions и currency_rate_to_rub
     #  автоматически вычислялся и подставлялся результат в поле deductions_in_rub
-    deductions_in_rub = models.DecimalField(max_digits=8, decimal_places=2)  # удержания в руб
+    deductions_in_rub = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
 
 
 

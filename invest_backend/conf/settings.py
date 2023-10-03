@@ -45,6 +45,7 @@ INSTALLED_APPS = [
 
     'src.assets',
     'src.transactions',
+    'src.attributes_list',
 ]
 
 MIDDLEWARE = [
