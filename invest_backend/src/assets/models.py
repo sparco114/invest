@@ -1,14 +1,14 @@
 from django.db import models
 from decimal import Decimal
 
-from src.attributes_list.models import Portfolio
+from src.fin_attributes.models import Portfolio, Agent
 
 
 class Asset(models.Model):
     ticker = models.CharField(max_length=5)
     name = models.CharField(max_length=50)
     portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)
-    agent = models.CharField(max_length=40)  # посредник
+    agent = models.ForeignKey(Agent, on_delete=models.PROTECT)  # посредник
     stock_market = models.CharField(max_length=40)
     asset_class = models.CharField(max_length=40)
     asset_type = models.CharField(max_length=40, blank=True, null=True)
@@ -20,6 +20,9 @@ class Asset(models.Model):
     #  Эти таблицы будут обновляться с API по кнопке.
     one_unit_price_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # цена за единицу
 
+    total_expenses_in_rub = models.DecimalField(max_digits=10, decimal_places=2)  # сумма затрат в RUB
+    total_expenses_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # сумма затрат в RUB
+
     @property
     def total_price_in_currency(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
@@ -29,26 +32,24 @@ class Asset(models.Model):
         print(type(price))
         print(price.quantize(Decimal('.01')))
         return price
-    # total_price_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # общая стоимость актива
-
-    total_expenses_rub = models.DecimalField(max_digits=10, decimal_places=2)  # сумма затрат в RUB
 
     @property
     def asset_price_change_rub(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
         # сначала переводим DecimalField в строку, а затем в Decimal, т.к. DecimalField невозможно умножать
-        price_change = Decimal(str(self.total_price_in_currency)) - Decimal(str(self.total_expenses_rub))
+        price_change = Decimal(str(self.total_price_in_currency)) - Decimal(str(self.total_expenses_in_rub))
         print(price_change)
         print(type(price_change))
         print(price_change.quantize(Decimal('.01')))
         return price_change
+
     # asset_price_change_rub = models.DecimalField(max_digits=10, decimal_places=2)  # изменение в RUB
 
     @property
     def asset_price_change_percent_rub(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
         # сначала переводим DecimalField в строку, а затем в Decimal, т.к. DecimalField невозможно умножать
-        price_change = Decimal(str(self.asset_price_change_rub)) / Decimal(str(self.total_expenses_rub))
+        price_change = Decimal(str(self.asset_price_change_rub)) / Decimal(str(self.total_expenses_in_rub))
         print(price_change)
         print(type(price_change))
         print(price_change.quantize(Decimal('.01')))
