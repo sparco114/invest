@@ -21,11 +21,11 @@ def asset_processing_create(transaction):
     print('СРАБОТАЛ----asset_processing_create')
     need_to_create_asset = False
     ticker = transaction.data.get('ticker')
-    portfolio_name = transaction.data.get('portfolio_name')
+    portfolio_name = transaction.data.get('portfolio_name') or None  # None, если прийдет пустая строка
     transaction_name = transaction.data.get('transaction_name')
     quantity = transaction.data.get('quantity')
 
-    print('ticker_____________', ticker)
+    # print('ticker_____________', ticker)
     print('portfolio_name_____________', portfolio_name)
     print('portfolio_name_____________тип', type(portfolio_name))
 
@@ -58,10 +58,42 @@ def asset_processing_create(transaction):
             # вычитаем количество, указанное в операции из общего количеству
             asset.total_quantity -= decimal.Decimal(quantity)
         asset.save()
-        return asset  # , asset.portfolio_name.pk
+        return asset
 
     if need_to_create_asset:
-        print('БУДЕТ СОЗДАВАТЬСЯ')
+        # Создание нового актива (Asset)
+        print('сработал need_to_create_asset----')
+
+        # если в операции заполнено поле Портфель
+        if portfolio_name:
+            # print('сработал if portfolio_name:----')
+
+            try:
+                # поиск существующего Портфеля
+                portfolio_name = Portfolio.objects.get(name=portfolio_name)
+                # print('portfolio----поиск', portfolio)
+            except Portfolio.DoesNotExist:
+                # если Портфель не существует - создание нового
+                portfolio_name = Portfolio.objects.create(name=portfolio_name)
+                # print('portfolio----создан', portfolio)
+
+        new_asset = Asset.objects.create(
+            ticker=ticker,
+            name=transaction.data.get('asset_name'),
+            portfolio_name=portfolio_name,
+            agent=transaction.data.get('agent'),
+            stock_market=transaction.data.get('stock_market'),
+            asset_class=transaction.data.get('asset_class'),
+            asset_type=transaction.data.get('asset_type'),
+            currency_of_price=transaction.data.get('currency_of_price'),
+            region=transaction.data.get('region'),
+            currency_of_asset=transaction.data.get('currency_of_asset'),
+            total_quantity=transaction.data.get('quantity'),
+            one_unit_price_in_currency=take_price(),
+            # TODO: подумать где вычитать расходы - здесь или где-то в другм месте
+            total_expenses_rub=transaction.data.get('total_price_in_currency'),
+        )
+        return new_asset
 
 
 def asset_processing_destroy(transaction):

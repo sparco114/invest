@@ -6,7 +6,7 @@ from src.attributes_list.models import Portfolio
 
 class Asset(models.Model):
     ticker = models.CharField(max_length=5)
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50)
     portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)
     agent = models.CharField(max_length=40)  # посредник
     stock_market = models.CharField(max_length=40)
