@@ -45,7 +45,7 @@ def asset_processing_create(transaction):
         :return: текущая цена актива
         """
         print('СРАБОТАЛ----take_price')
-        return 100
+        return 200
 
     try:
         asset = Asset.objects.get(ticker=ticker,
@@ -105,6 +105,7 @@ def asset_processing_create(transaction):
             currency_of_price, currency_of_price_created = Currency.objects.get_or_create(name=currency_of_price)
             print('currency_of_price----создан', currency_of_price)
             currency_of_asset = currency_of_price
+
         # если валюта цены и валюта покупки различается - то создаем в БД каждую по отдельности
         else:
             currency_of_price, currency_of_price_created = Currency.objects.get_or_create(name=currency_of_price)
@@ -119,6 +120,9 @@ def asset_processing_create(transaction):
 
         new_asset = Asset.objects.create(
             ticker=ticker,
+
+            # выше, при поиске актива не используем поле name (asset_name), потому что наименование (компании)
+            # может измениться, в этом случае будет просто записано новое полученное в запросе
             name=transaction.data.get('asset_name'),
             portfolio_name=portfolio_name,
             agent=agent,
@@ -128,7 +132,9 @@ def asset_processing_create(transaction):
             currency_of_price=currency_of_price,
             region=region,
             currency_of_asset=currency_of_asset,
-            total_quantity=transaction.data.get('quantity'),
+            total_quantity=(transaction.data.get('quantity')
+                            if transaction_name == 'buy'
+                            else f"-{transaction.data.get('quantity')}"),
             one_unit_price_in_currency=take_price(),
             # TODO: подумать где вычитать расходы - здесь или где-то в другм месте
             total_expenses_in_rub=transaction.data.get('total_price_in_rub'),
@@ -142,7 +148,7 @@ def asset_processing_destroy(transaction):
     Поиск актива (Asset) для удаляемой операции, и обновление информации в нем, на основании удаления операции.
     TODO: добавить уведомление, если при удалении операции получится ситуация, когда количество актива < 0
     """
-    asset = transaction.ticker  # получаем объект актива
+    asset = transaction.asset  # получаем объект актива
     transaction_name = transaction.transaction_name
     quantity = transaction.quantity
     print('asset--------', type(asset))
@@ -173,10 +179,15 @@ class TransactionsView(ModelViewSet):
         # print('asset_pk++++++++', asset_pk)
         # print('type-asset_pk++++++++', type(asset_pk))
         request_data_for_serialize = request.data.copy()
+
+        # print('asset.id========', asset.id)
+        # print('asset.total_quantity========', asset.total_quantity)
+        # print('asset.total_quantity========TYPE', type(asset.total_quantity))
+        # print('asset.total_price_in_currency========', asset.total_price_in_currency)
+        # print('asset.total_price_in_currency========TYPE', type(asset.total_price_in_currency))
+        # print('asset.portfolio_name========', asset.portfolio_name_id)
+        # print('asset.agent_id========', asset.agent_id)
         # добавялем данные объекта (который создали/получили из БД) вместо имени(str), которое было в запросе
-        print('asset.ticker========', asset.id)
-        print('asset.portfolio_name========', asset.portfolio_name_id)
-        print('asset.agent_id========', asset.agent_id)
         request_data_for_serialize['asset'] = asset.id
         request_data_for_serialize['portfolio_name'] = asset.portfolio_name_id
         request_data_for_serialize['agent'] = asset.agent_id

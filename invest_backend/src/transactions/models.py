@@ -52,3 +52,6 @@ class Transaction(models.Model):
     # TODO: написать на фронте логику, чтоб при заполнении deductions и currency_rate_to_rub
     #  автоматически вычислялся и подставлялся результат в поле deductions_in_rub
     deductions_in_rub = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
+
+    def __str__(self):
+        return f"id: {self.pk} - '{self.transaction_name}', '{self.ticker}', '{self.quantity}'"
