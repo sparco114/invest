@@ -1,7 +1,7 @@
 from django.db import models
 
 from src.assets.models import Asset
-from src.fin_attributes.models import Portfolio, Agent
+from src.fin_attributes.models import Portfolio, Agent, StockMarket, AssetClass, AssetType, Currency, Region
 
 
 class Transaction(models.Model):
@@ -14,16 +14,24 @@ class Transaction(models.Model):
     date = models.DateField()
     transaction_name = models.CharField(max_length=20, choices=TRANSACTION_NAMES)
     ticker = models.CharField(max_length=5)
-    asset = models.ForeignKey(Asset, max_length=5, on_delete=models.CASCADE)
+    asset = models.ForeignKey(Asset, max_length=5, on_delete=models.CASCADE, related_name='transactions')
     asset_name = models.CharField(max_length=40)
     portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)
     agent = models.ForeignKey(Agent, on_delete=models.PROTECT)  # посредник
-    stock_market = models.CharField(max_length=40)
-    asset_class = models.CharField(max_length=40)  # класс актива (акции, облигации, крипта и тд)
-    asset_type = models.CharField(max_length=40, blank=True, null=True)  # вид актива (корпоративные, ОФЗ и тд)
-    currency_of_price = models.CharField(max_length=10)  # валюта цены
-    region = models.CharField(max_length=40, blank=True, null=True)
-    currency_of_asset = models.CharField(max_length=10)  # валюта актива
+    stock_market = models.ForeignKey(StockMarket, on_delete=models.PROTECT)
+    asset_class = models.ForeignKey(AssetClass,
+                                    on_delete=models.PROTECT)  # класс актива (акции, облигации, крипта и тд)
+    asset_type = models.ForeignKey(AssetType,
+                                   on_delete=models.SET_NULL,
+                                   blank=True,
+                                   null=True)  # вид актива (корпоративные, ОФЗ и тд)
+    currency_of_price = models.ForeignKey(Currency,
+                                          on_delete=models.PROTECT,
+                                          related_name='currency_of_price_in_transaction')  # валюта цены
+    region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True)
+    currency_of_asset = models.ForeignKey(Currency,
+                                          on_delete=models.PROTECT,
+                                          related_name='currency_of_asset_in_transaction')  # валюта актива
     quantity = models.DecimalField(max_digits=18, decimal_places=8)
     one_unit_price_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # цена за единицу
 
@@ -44,10 +52,3 @@ class Transaction(models.Model):
     # TODO: написать на фронте логику, чтоб при заполнении deductions и currency_rate_to_rub
     #  автоматически вычислялся и подставлялся результат в поле deductions_in_rub
     deductions_in_rub = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
-
-
-
-
-
-
-

@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from src.assets.models import Asset
-from src.fin_attributes.models import Portfolio, Agent
+from src.fin_attributes.models import Portfolio, Agent, StockMarket, AssetClass, AssetType, Currency, Region
 from src.transactions.models import Transaction
 from src.transactions.serializer import TransactionsSerializer
 
@@ -22,11 +22,16 @@ def asset_processing_create(transaction):
     need_to_create_asset = False
     ticker = transaction.data.get('ticker')
     portfolio_name = transaction.data.get('portfolio_name') or None  # None - если прийдет пустая строка
-    agent = transaction.data.get('portfolio_name')
+    agent = transaction.data.get('agent')
+    stock_market = transaction.data.get('stock_market')
+    asset_class = transaction.data.get('asset_class')
+    asset_type = transaction.data.get('asset_type') or None  # None - если прийдет пустая строка
+    currency_of_price = transaction.data.get('currency_of_price')
+    region = transaction.data.get('region') or None  # None - если прийдет пустая строка
+    currency_of_asset = transaction.data.get('currency_of_asset')
 
     transaction_name = transaction.data.get('transaction_name')
     quantity = transaction.data.get('quantity')
-
 
     print('portfolio_name_____________', portfolio_name)
     print('portfolio_name_____________тип', type(portfolio_name))
@@ -46,6 +51,12 @@ def asset_processing_create(transaction):
         asset = Asset.objects.get(ticker=ticker,
                                   portfolio_name__name=portfolio_name,
                                   agent__name=agent,
+                                  stock_market__name=stock_market,
+                                  asset_class__name=asset_class,
+                                  asset_type__name=asset_type,
+                                  currency_of_price__name=currency_of_price,
+                                  region__name=region,
+                                  currency_of_asset__name=currency_of_asset,
                                   )
         print('asset--------------try', asset)
     except Asset.DoesNotExist as not_exist:
@@ -69,39 +80,54 @@ def asset_processing_create(transaction):
         # Создание нового актива (Asset)
         print('сработал need_to_create_asset----')
 
-        # если в операции заполнено поле Портфель
+        # если в операции заполнено поле Портфель (иначе останется None)
         if portfolio_name:
             print('сработал if portfolio_name:----')
+            portfolio_name, portfolio_created = Portfolio.objects.get_or_create(name=portfolio_name)
+            print('portfolio----создан', portfolio_name)
 
-            try:
-                # поиск существующего Портфеля
-                portfolio_name = Portfolio.objects.get(name=portfolio_name)
-                print('portfolio----поиск', portfolio_name)
-            except Portfolio.DoesNotExist:
-                # если Портфель не существует - создание нового
-                portfolio_name = Portfolio.objects.create(name=portfolio_name)
-                print('portfolio----создан', portfolio_name)
+        agent, agent_created = Agent.objects.get_or_create(name=agent)
+        print('agent----создан', agent)
 
-        try:
-            # поиск существующего Портфеля
-            agent = Agent.objects.get(name=agent)
-            print('agent----поиск', agent)
-        except Agent.DoesNotExist:
-            # если Портфель не существует - создание нового
-            agent = Agent.objects.create(name=agent)
-            print('agent----создан', agent)
+        stock_market, stock_market_created = StockMarket.objects.get_or_create(name=stock_market)
+        print('stock_market----создан', stock_market)
+
+        asset_class, asset_class_created = AssetClass.objects.get_or_create(name=asset_class)
+        print('asset_class----создан', asset_class)
+
+        # если в операции заполнено поле Вид актива (иначе останется None)
+        if asset_type:
+            asset_type, asset_type_created = AssetType.objects.get_or_create(name=asset_type)
+            print('asset_type----создан', asset_type)
+
+        # если валюта цены и валюта покупки одинаковая - то создаем валюту в БД один раз
+        if currency_of_price == currency_of_asset:
+            currency_of_price, currency_of_price_created = Currency.objects.get_or_create(name=currency_of_price)
+            print('currency_of_price----создан', currency_of_price)
+            currency_of_asset = currency_of_price
+        # если валюта цены и валюта покупки различается - то создаем в БД каждую по отдельности
+        else:
+            currency_of_price, currency_of_price_created = Currency.objects.get_or_create(name=currency_of_price)
+            print('currency_of_price----создан', currency_of_price)
+            currency_of_asset, currency_of_asset_created = Currency.objects.get_or_create(name=currency_of_asset)
+            print('currency_of_asset----создан', currency_of_asset)
+
+        # если в операции заполнено поле Регион (иначе останется None)
+        if region:
+            region, currency_created = Region.objects.get_or_create(name=region)
+            print('region----создан', region)
 
         new_asset = Asset.objects.create(
             ticker=ticker,
             name=transaction.data.get('asset_name'),
             portfolio_name=portfolio_name,
             agent=agent,
-            stock_market=transaction.data.get('stock_market'),
-            asset_class=transaction.data.get('asset_class'),
-            asset_type=transaction.data.get('asset_type'),
-            currency_of_price=transaction.data.get('currency_of_price'),
-            region=transaction.data.get('region'),
-            currency_of_asset=transaction.data.get('currency_of_asset'),
+            stock_market=stock_market,
+            asset_class=asset_class,
+            asset_type=asset_type,
+            currency_of_price=currency_of_price,
+            region=region,
+            currency_of_asset=currency_of_asset,
             total_quantity=transaction.data.get('quantity'),
             one_unit_price_in_currency=take_price(),
             # TODO: подумать где вычитать расходы - здесь или где-то в другм месте
@@ -154,6 +180,12 @@ class TransactionsView(ModelViewSet):
         request_data_for_serialize['asset'] = asset.id
         request_data_for_serialize['portfolio_name'] = asset.portfolio_name_id
         request_data_for_serialize['agent'] = asset.agent_id
+        request_data_for_serialize['stock_market'] = asset.stock_market_id
+        request_data_for_serialize['asset_class'] = asset.asset_class_id
+        request_data_for_serialize['asset_type'] = asset.asset_type_id
+        request_data_for_serialize['currency_of_price'] = asset.currency_of_price_id
+        request_data_for_serialize['region'] = asset.region_id
+        request_data_for_serialize['currency_of_asset'] = asset.currency_of_asset_id
         serializer = self.get_serializer(data=request_data_for_serialize)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
