@@ -13,7 +13,7 @@ def take_current_currency_rate_to_rub():
     :return: текущий курс рубля к валюте
     """
     print('СРАБОТАЛ --- take_current_currency_rate_to_rub')
-    return 2
+    return 4
 
 
 class Asset(models.Model):
@@ -34,16 +34,18 @@ class Asset(models.Model):
     total_quantity = models.DecimalField(max_digits=18, decimal_places=8)
     # TODO: цена должна тянустья из таблицы, в которой будут храниться данные о ценах на все купленные активы.
     #  Эти таблицы будут обновляться с API по кнопке.
-    one_unit_price_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # цена за единицу
+    one_unit_current_price_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # цена за единицу
 
-    total_expenses_in_rub = models.DecimalField(max_digits=10, decimal_places=2)  # сумма затрат в RUB
     total_expenses_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # сумма затрат в RUB
+    total_expenses_in_rub = models.DecimalField(max_digits=10, decimal_places=2)  # сумма затрат в RUB
+    average_buying_price_of_one_unit_in_currency = models.DecimalField(max_digits=10, decimal_places=2)
+    average_buying_price_of_one_unit_in_rub = models.DecimalField(max_digits=10, decimal_places=2)
 
     @property
     def total_price_in_currency(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
         # сначала переводим DecimalField в строку, а затем в Decimal, т.к. DecimalField невозможно умножать
-        price = Decimal(str(self.one_unit_price_in_currency)) * Decimal(str(self.total_quantity))
+        price = Decimal(str(self.one_unit_current_price_in_currency)) * Decimal(str(self.total_quantity))
         print(price)
         print(type(price))
         print(price.quantize(Decimal('.01')))
@@ -75,7 +77,7 @@ class Asset(models.Model):
     def total_price_in_rub(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
         # сначала переводим DecimalField в строку, а затем в Decimal, т.к. DecimalField невозможно умножать
-        price = Decimal(str(self.one_unit_price_in_currency)) * Decimal(str(self.total_quantity)) * Decimal(
+        price = Decimal(str(self.one_unit_current_price_in_currency)) * Decimal(str(self.total_quantity)) * Decimal(
             str(take_current_currency_rate_to_rub()))
         print(price)
         print(type(price))
@@ -92,13 +94,14 @@ class Asset(models.Model):
         print(price_change.quantize(Decimal('.01')))
         return price_change
 
-    # asset_price_change_rub = models.DecimalField(max_digits=10, decimal_places=2)  # изменение в RUB
 
     @property
     def total_price_change_percent_in_rub(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
         # сначала переводим DecimalField в строку, а затем в Decimal, т.к. DecimalField невозможно умножать
-        price_change = Decimal(str(self.total_price_change_in_rub)) / Decimal(str(self.total_expenses_in_rub)) * Decimal(100)
+        price_change = (Decimal(str(self.total_price_change_in_rub))
+                        / Decimal(str(self.total_expenses_in_rub))
+                        * Decimal(100))
         print(price_change)
         print(type(price_change))
         print(price_change.quantize(Decimal('.01')))

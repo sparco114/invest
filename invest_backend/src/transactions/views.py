@@ -1,5 +1,6 @@
 import decimal
 
+
 from django.db.models import Model
 from django.shortcuts import render
 from rest_framework import status
@@ -32,9 +33,18 @@ def asset_processing_create(transaction):
 
     transaction_name = transaction.data.get('transaction_name')
     quantity = transaction.data.get('quantity')
+    total_price_in_currency = transaction.data.get('total_price_in_currency')
+    total_price_in_rub = transaction.data.get('total_price_in_rub')
 
-    print('portfolio_name_____________', portfolio_name)
-    print('portfolio_name_____________тип', type(portfolio_name))
+
+    # print('ДО')
+    # print(type(decimal.Decimal(quantity)))
+    # aaa = decimal.Decimal(total_price_in_rub) / decimal.Decimal(quantity)
+    # print(type(decimal.Decimal(str(total_price_in_rub))))
+    # print('FFFFFFFFF-------', aaa)
+    # return
+    # print('portfolio_name_____________', portfolio_name)
+    # print('portfolio_name_____________тип', type(portfolio_name))
 
     def take_price():
         """
@@ -45,7 +55,7 @@ def asset_processing_create(transaction):
         :return: текущая цена актива
         """
         print('СРАБОТАЛ----take_price')
-        return 200
+        return 300
 
     try:
         asset = Asset.objects.get(ticker=ticker,
@@ -61,7 +71,12 @@ def asset_processing_create(transaction):
         print('asset--------------try', asset)
     except Asset.DoesNotExist as not_exist:
         print('DoesNotExist---=--====', not_exist)
-        need_to_create_asset = True
+        if transaction_name == 'buy':
+            need_to_create_asset = True
+        else:
+            # TODO: найти место, где сделать уведомление, если продаем количество актива, больше чем у нас есть
+            print("Невозможно продать актив, который отсутствует")
+            raise Asset.DoesNotExist("Невозможно продать актив, который отсутствует")
     # except Exception as err:
     #     print("Ошибка при получении актива:", type(err), err)
     #     raise err
@@ -70,9 +85,22 @@ def asset_processing_create(transaction):
         if transaction_name == 'buy':
             # прибавляем количество, указанное в операции к общему количеству
             asset.total_quantity += decimal.Decimal(quantity)
+            asset.total_expenses_in_currency += decimal.Decimal(total_price_in_currency)
+            asset.total_expenses_in_rub += decimal.Decimal(total_price_in_rub)
+
+            # TODO: возможно эти два поля можно перенести в модель и сделать рассчитываемыми (property)
+            asset.average_buying_price_of_one_unit_in_currency = (asset.total_expenses_in_currency
+                                                                  / asset.total_quantity)
+            asset.average_buying_price_of_one_unit_in_rub = (asset.total_expenses_in_rub
+                                                             / asset.total_quantity)
+
         if transaction_name == 'sell':
             # вычитаем количество, указанное в операции из общего количеству
             asset.total_quantity -= decimal.Decimal(quantity)
+            asset.total_expenses_in_currency -= (asset.average_buying_price_of_one_unit_in_currency
+                                                 * decimal.Decimal(quantity))
+            asset.total_expenses_in_rub -= (asset.average_buying_price_of_one_unit_in_rub
+                                            * decimal.Decimal(quantity))
         asset.save()
         return asset
 
@@ -84,39 +112,39 @@ def asset_processing_create(transaction):
         if portfolio_name:
             print('сработал if portfolio_name:----')
             portfolio_name, portfolio_created = Portfolio.objects.get_or_create(name=portfolio_name)
-            print('portfolio----создан', portfolio_name)
+            print('portfolio----', portfolio_name)
 
         agent, agent_created = Agent.objects.get_or_create(name=agent)
-        print('agent----создан', agent)
+        print('agent----', agent)
 
         stock_market, stock_market_created = StockMarket.objects.get_or_create(name=stock_market)
-        print('stock_market----создан', stock_market)
+        print('stock_market----', stock_market)
 
         asset_class, asset_class_created = AssetClass.objects.get_or_create(name=asset_class)
-        print('asset_class----создан', asset_class)
+        print('asset_class----', asset_class)
 
         # если в операции заполнено поле Вид актива (иначе останется None)
         if asset_type:
             asset_type, asset_type_created = AssetType.objects.get_or_create(name=asset_type)
-            print('asset_type----создан', asset_type)
+            print('asset_type----', asset_type)
 
         # если валюта цены и валюта покупки одинаковая - то создаем валюту в БД один раз
         if currency_of_price == currency_of_asset:
             currency_of_price, currency_of_price_created = Currency.objects.get_or_create(name=currency_of_price)
-            print('currency_of_price----создан', currency_of_price)
+            print('currency_of_price----', currency_of_price)
             currency_of_asset = currency_of_price
 
         # если валюта цены и валюта покупки различается - то создаем в БД каждую по отдельности
         else:
             currency_of_price, currency_of_price_created = Currency.objects.get_or_create(name=currency_of_price)
-            print('currency_of_price----создан', currency_of_price)
+            print('currency_of_price----', currency_of_price)
             currency_of_asset, currency_of_asset_created = Currency.objects.get_or_create(name=currency_of_asset)
-            print('currency_of_asset----создан', currency_of_asset)
+            print('currency_of_asset----', currency_of_asset)
 
         # если в операции заполнено поле Регион (иначе останется None)
         if region:
             region, currency_created = Region.objects.get_or_create(name=region)
-            print('region----создан', region)
+            print('region----', region)
 
         new_asset = Asset.objects.create(
             ticker=ticker,
@@ -132,13 +160,15 @@ def asset_processing_create(transaction):
             currency_of_price=currency_of_price,
             region=region,
             currency_of_asset=currency_of_asset,
-            total_quantity=(transaction.data.get('quantity')
-                            if transaction_name == 'buy'
-                            else f"-{transaction.data.get('quantity')}"),
-            one_unit_price_in_currency=take_price(),
+            total_quantity=quantity,
+            one_unit_current_price_in_currency=take_price(),
             # TODO: подумать где вычитать расходы - здесь или где-то в другм месте
-            total_expenses_in_rub=transaction.data.get('total_price_in_rub'),
-            total_expenses_in_currency=transaction.data.get('total_price_in_currency'),
+            total_expenses_in_currency=total_price_in_currency,
+            total_expenses_in_rub=total_price_in_rub,
+            average_buying_price_of_one_unit_in_currency=transaction.data.get(
+                'one_unit_buying_price_in_currency'),
+            # TODO: !! перенести это в модель Транзакции, чтоб там было это поле
+            average_buying_price_of_one_unit_in_rub=decimal.Decimal(total_price_in_rub) / decimal.Decimal(quantity)
         )
         return new_asset
 
@@ -172,9 +202,14 @@ class TransactionsView(ModelViewSet):
             # получаем asset или создаем, если не существет
             asset = asset_processing_create(transaction=request)
             print('asset_полученный в create++++++++', type(asset), asset, asset.__dict__)
+        except Asset.DoesNotExist as err:
+            print("except Asset.DoesNotExist as err: ----create", err)
+            err_data = f"Ошибка: {err}"
+            return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
         except Exception as err:
-            print(f'Не удалось получить/создать Актив для транзакции {request.data}. Ошибка:', type(err), err)
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            err_data = f"Не удалось получить/создать Актив для транзакции. Ошибка: {err}"
+            print(err_data, type(err))
+            return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
         # print('request.data----------', request.data)
         # print('asset_pk++++++++', asset_pk)
         # print('type-asset_pk++++++++', type(asset_pk))

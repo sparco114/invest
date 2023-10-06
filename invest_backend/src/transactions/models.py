@@ -33,7 +33,7 @@ class Transaction(models.Model):
                                           on_delete=models.PROTECT,
                                           related_name='currency_of_asset_in_transaction')  # валюта актива
     quantity = models.DecimalField(max_digits=18, decimal_places=8)
-    one_unit_price_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # цена за единицу
+    one_unit_buying_price_in_currency = models.DecimalField(max_digits=10, decimal_places=2)  # цена за единицу
 
     # TODO: написать на фронте логику, чтоб при заполнении one_unit_price_in_currency и quantity
     #  автоматически вычислялся и подставлялся результат в поле total_price_in_currency
@@ -48,6 +48,14 @@ class Transaction(models.Model):
     # TODO: написать на фронте логику, чтоб при заполнении total_price_in_currency и currency_rate_to_rub
     #  автоматически вычислялся и подставлялся результат в поле total_price_in_rub
     total_price_in_rub = models.DecimalField(max_digits=18, decimal_places=8)
+
+    # @property
+    # def one_unit_buying_price_in_rub(self):
+    #     price = Decimal(str(self.total_price_in_rub)) / Decimal(str(self.quantity))
+    #     print('one_unit_buying_price_in_rub---in Transaction', price)
+    #     print(type(price))
+    #     print(price.quantize(Decimal('.01')))
+    #     return price
 
     # TODO: написать на фронте логику, чтоб при заполнении deductions и currency_rate_to_rub
     #  автоматически вычислялся и подставлялся результат в поле deductions_in_rub
