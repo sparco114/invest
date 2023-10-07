@@ -14,7 +14,7 @@ class Transaction(models.Model):
     date = models.DateField()
     transaction_name = models.CharField(max_length=20, choices=TRANSACTION_NAMES)
     ticker = models.CharField(max_length=5)
-    asset = models.ForeignKey(Asset, max_length=5, on_delete=models.CASCADE, related_name='transactions')
+    # asset = models.ForeignKey(Asset, max_length=5, on_delete=models.CASCADE, related_name='transactions')
     asset_name = models.CharField(max_length=40)
     portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)
     agent = models.ForeignKey(Agent, on_delete=models.PROTECT)  # посредник
@@ -60,6 +60,10 @@ class Transaction(models.Model):
     # TODO: написать на фронте логику, чтоб при заполнении deductions и currency_rate_to_rub
     #  автоматически вычислялся и подставлялся результат в поле deductions_in_rub
     deductions_in_rub = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
+
+    # created_at =
+    # updated_at =
+    # creator =
 
     def __str__(self):
         return f"id: {self.pk} - '{self.transaction_name}', '{self.ticker}', '{self.quantity}'"

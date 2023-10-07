@@ -5,12 +5,14 @@ description = ""
 authors = ["anton <sparco114@ya.ru>"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "3.10"
 Django = "3.2.20"
-djangorestframework = "^3.14.0"
-djoser = "^2.2.0"
-psycopg2 = "^2.9.7"
-django-cors-headers = "^4.2.0"
+djangorestframework = "3.14.0"
+djoser = "2.2.0"
+psycopg2 = "2.9.7"
+django-cors-headers = "4.2.0"
+numpy = "1.23.2)"
+pandas = "2.1.1"
 
 [tool.poetry.dev-dependencies]
 
