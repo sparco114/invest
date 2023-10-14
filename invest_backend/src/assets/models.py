@@ -67,18 +67,22 @@ class Asset(models.Model):
     def total_price_change_percent_in_currency(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
         # сначала переводим DecimalField в строку, а затем в Decimal, т.к. DecimalField невозможно умножать
-        price_change = Decimal(str(self.total_price_change_in_currency)) / Decimal(str(self.total_expenses_in_currency)) * Decimal(100)
-        print(price_change)
-        print(type(price_change))
-        print(price_change.quantize(Decimal('.01')))
+        if self.total_expenses_in_currency:
+            price_change = Decimal(str(self.total_price_change_in_currency)) / Decimal(str(
+                self.total_expenses_in_currency)) * Decimal(100)
+            print(price_change)
+            print(type(price_change))
+            print(price_change.quantize(Decimal('.01')))
+        else:
+            price_change = 0
         return price_change.quantize(Decimal('.01'))
 
     @property
     def total_price_in_rub(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
         # сначала переводим DecimalField в строку, а затем в Decimal, т.к. DecimalField невозможно умножать
-        price = Decimal(str(self.one_unit_current_price_in_currency)) * Decimal(str(self.total_quantity)) * Decimal(
-            str(take_current_currency_rate_to_rub()))
+        price = Decimal(str(self.one_unit_current_price_in_currency)) * Decimal(str(self.total_quantity)) * Decimal(str(
+            take_current_currency_rate_to_rub()))
         print(price)
         print(type(price))
         print(price.quantize(Decimal('.01')))
@@ -94,17 +98,19 @@ class Asset(models.Model):
         print(price_change.quantize(Decimal('.01')))
         return price_change
 
-
     @property
     def total_price_change_percent_in_rub(self):
         # TODO: возможно нужно будет другое округление. Так же можно перенести это в annotate во view
         # сначала переводим DecimalField в строку, а затем в Decimal, т.к. DecimalField невозможно умножать
-        price_change = (Decimal(str(self.total_price_change_in_rub))
-                        / Decimal(str(self.total_expenses_in_rub))
-                        * Decimal(100))
-        print(price_change)
-        print(type(price_change))
-        print(price_change.quantize(Decimal('.01')))
+        if self.total_expenses_in_rub:
+            price_change = (Decimal(str(self.total_price_change_in_rub))
+                            / Decimal(str(self.total_expenses_in_rub))
+                            * Decimal(100))
+            print(price_change)
+            print(type(price_change))
+            print(price_change.quantize(Decimal('.01')))
+        else:
+            price_change = 0
         return price_change.quantize(Decimal('.01'))
 
     # asset_price_change_percent_rub = models.DecimalField(max_digits=6, decimal_places=2)  # изменение в % (RUB)
