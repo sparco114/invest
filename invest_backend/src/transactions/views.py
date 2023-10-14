@@ -294,7 +294,6 @@ def asset_processing_create(transaction):
     else:
         print('asset--------------else', asset.__dict__)
         if transaction_name == 'buy':
-            # прибавляем количество, указанное в операции к общему количеству
             asset.total_quantity += decimal.Decimal(quantity)
             asset.total_expenses_in_currency += decimal.Decimal(total_price_in_currency)
             asset.total_expenses_in_rub += decimal.Decimal(total_price_in_rub)
@@ -306,13 +305,16 @@ def asset_processing_create(transaction):
                                                              / asset.total_quantity)
 
         if transaction_name == 'sell':
-            # вычитаем количество, указанное в операции из общего количеству
-            asset.total_quantity -= decimal.Decimal(quantity)
-
-            asset.total_expenses_in_currency -= (asset.average_buying_price_of_one_unit_in_currency
+            # asset.total_expenses_in_currency -= (asset.average_buying_price_of_one_unit_in_currency
+            #                                      * decimal.Decimal(quantity))
+            # asset.total_expenses_in_rub -= (asset.average_buying_price_of_one_unit_in_rub
+            #                                 * decimal.Decimal(quantity))
+            asset.total_expenses_in_currency -= ((asset.total_expenses_in_currency / asset.total_quantity)
                                                  * decimal.Decimal(quantity))
-            asset.total_expenses_in_rub -= (asset.average_buying_price_of_one_unit_in_rub
+            asset.total_expenses_in_rub -= ((asset.total_expenses_in_rub / asset.total_quantity)
                                             * decimal.Decimal(quantity))
+
+            asset.total_quantity -= decimal.Decimal(quantity)
 
             # если после продажи количество актива будет 0, то обнуляем так же среднюю стоимость
             if asset.total_quantity == 0:
