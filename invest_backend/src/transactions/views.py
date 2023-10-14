@@ -76,35 +76,37 @@ def get_or_create_fin_attributes(transaction):
         region, currency_created = Region.objects.get_or_create(name=region)
         print('region----', region)
 
-    fin_attributes_data['portfolio_name'] = portfolio_name.id if portfolio_name else None
-    fin_attributes_data['agent'] = agent.id
-    fin_attributes_data['stock_market'] = stock_market.id
-    fin_attributes_data['asset_class'] = asset_class.id
-    fin_attributes_data['asset_type'] = asset_type.id if asset_type else None
-    fin_attributes_data['currency_of_price'] = currency_of_price.id
-    fin_attributes_data['currency_of_asset'] = currency_of_asset.id
-    fin_attributes_data['region'] = region.id if region else None
+    fin_attributes_data['portfolio_name'] = portfolio_name
+    fin_attributes_data['agent'] = agent
+    fin_attributes_data['stock_market'] = stock_market
+    fin_attributes_data['asset_class'] = asset_class
+    fin_attributes_data['asset_type'] = asset_type
+    fin_attributes_data['currency_of_price'] = currency_of_price
+    fin_attributes_data['currency_of_asset'] = currency_of_asset
+    fin_attributes_data['region'] = region
 
     print('----fin_attributes_data----на выходе функции:', fin_attributes_data)
     return fin_attributes_data
 
 
-def asset_recounting_when_transaction_create(transaction):
-    print("----получена transaction в asset_recounting_when_transaction_create:", transaction.__dict__)
-    print("----получена transaction в asset_recounting_when_transaction_create--t:", type(transaction))
+def asset_recounting_when_transaction_create(transaction, fin_attributes):
+    # print("----получена transaction в asset_recounting_when_transaction_create:", transaction.__dict__)
+    # print("----получена transaction в asset_recounting_when_transaction_create--t:", type(transaction))
+    # print("----получена fin_attributes в asset_recounting_when_transaction_create--t:", fin_attributes)
 
     ticker = transaction['ticker']
     asset_name = transaction['asset_name']
-    portfolio_name = transaction['portfolio_name']
-    agent = transaction['agent']
-    stock_market = transaction['stock_market']
-    asset_class = transaction['asset_class']
-    asset_type = transaction['asset_type']
-    currency_of_price = transaction['currency_of_price']
-    region = transaction['region']
-    currency_of_asset = transaction['currency_of_asset']
 
-    print('----portfolio_name', portfolio_name)
+    portfolio_name = fin_attributes['portfolio_name']
+    agent = fin_attributes['agent']
+    stock_market = fin_attributes['stock_market']
+    asset_class = fin_attributes['asset_class']
+    asset_type = fin_attributes['asset_type']
+    currency_of_price = fin_attributes['currency_of_price']
+    region = fin_attributes['region']
+    currency_of_asset = fin_attributes['currency_of_asset']
+
+    print('----portfolio_name---', portfolio_name)
 
     all_transactions_of_asset = Transaction.objects.filter(
         ticker=ticker,
@@ -117,19 +119,21 @@ def asset_recounting_when_transaction_create(transaction):
         region=region,
         currency_of_asset=currency_of_asset,
     )
-    print('-------all_transactions_of_asset - filter:', all_transactions_of_asset)
+    # print('-------all_transactions_of_asset - filter:', all_transactions_of_asset)
     df_all_transactions_of_asset = pd.DataFrame(all_transactions_of_asset.values(),
                                                 # index=all_transactions_of_asset.values('id', 'transaction_name')
                                                 )
-    print('-----df', df_all_transactions_of_asset)
+    print('-----df', df_all_transactions_of_asset.loc[:, ["id", "transaction_name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
+
 
     df_buy_transactions_of_asset = df_all_transactions_of_asset[
         df_all_transactions_of_asset['transaction_name'] == 'buy']
-    print('----df_buy', df_buy_transactions_of_asset)
+    print('----df_buy', df_buy_transactions_of_asset.loc[:, ["id", "transaction_name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
 
     df_sell_transactions_of_asset = df_all_transactions_of_asset[
         df_all_transactions_of_asset['transaction_name'] == 'sell']
-    print('----df_sell', df_sell_transactions_of_asset)
+    print('----df_sell', df_sell_transactions_of_asset.loc[:, ["id", "transaction_name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
+
 
     total_quantity = (df_buy_transactions_of_asset['quantity'].sum()
                       - df_sell_transactions_of_asset['quantity'].sum())
@@ -183,21 +187,23 @@ class TransactionsView(ModelViewSet):
         fin_attributes = get_or_create_fin_attributes(transaction=request)
         request_data_for_serialize = request.data.copy()
 
-        request_data_for_serialize['portfolio_name'] = fin_attributes['portfolio_name']
-        request_data_for_serialize['agent'] = fin_attributes['agent']
-        request_data_for_serialize['stock_market'] = fin_attributes['stock_market']
-        request_data_for_serialize['asset_class'] = fin_attributes['asset_class']
-        request_data_for_serialize['asset_type'] = fin_attributes['asset_type'] or None
-        request_data_for_serialize['currency_of_price'] = fin_attributes['currency_of_price']
-        request_data_for_serialize['region'] = fin_attributes['region']
-        request_data_for_serialize['currency_of_asset'] = fin_attributes['currency_of_asset']
+        request_data_for_serialize['portfolio_name'] = \
+            fin_attributes['portfolio_name'].id if fin_attributes['portfolio_name'] else None
+        request_data_for_serialize['agent'] = fin_attributes['agent'].id
+        request_data_for_serialize['stock_market'] = fin_attributes['stock_market'].id
+        request_data_for_serialize['asset_class'] = fin_attributes['asset_class'].id
+        request_data_for_serialize['asset_type'] = \
+            fin_attributes['asset_type'].id if fin_attributes['asset_type'] else None
+        request_data_for_serialize['currency_of_price'] = fin_attributes['currency_of_price'].id
+        request_data_for_serialize['region'] = fin_attributes['region'].id if fin_attributes['region'] else None
+        request_data_for_serialize['currency_of_asset'] = fin_attributes['currency_of_asset'].id
         print('-----request_data_for_serialize:', request_data_for_serialize)
 
         serializer = self.get_serializer(data=request_data_for_serialize)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         print('-------сформированная serializer.data', serializer.data)
-        asset_recounting_when_transaction_create(transaction=serializer.data)
+        asset_recounting_when_transaction_create(transaction=serializer.data, fin_attributes=fin_attributes)
 
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
