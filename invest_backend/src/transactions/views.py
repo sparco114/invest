@@ -9,6 +9,18 @@ from src.transactions.models import Transaction
 from src.transactions.serializer import TransactionsSerializer
 
 
+def take_price():
+    """
+    TODO: написать функционал
+    Обращается к стороннему апи, чтобы получить стоимость актива (а так же в этот
+    момент добавляться в таблицу, в которой будут храниться данные о ценах на все купленные активы.
+    Эти таблицы будут обновляться с API по кнопке)
+    :return: текущая цена актива
+    """
+    print('СРАБОТАЛ----take_price')
+    return 300
+
+
 def get_or_create_fin_attributes(transaction):
     """
     :param transaction:
@@ -82,6 +94,7 @@ def asset_recounting_when_transaction_create(transaction):
     print("----получена transaction в asset_recounting_when_transaction_create--t:", type(transaction))
 
     ticker = transaction['ticker']
+    asset_name = transaction['asset_name']
     portfolio_name = transaction['portfolio_name']
     agent = transaction['agent']
     stock_market = transaction['stock_market']
@@ -105,30 +118,61 @@ def asset_recounting_when_transaction_create(transaction):
         currency_of_asset=currency_of_asset,
     )
     print('-------all_transactions_of_asset - filter:', all_transactions_of_asset)
-    df = pd.DataFrame(all_transactions_of_asset.values(),
-                      # index=all_transactions_of_asset.values('id', 'transaction_name')
-                      )
-    print('-----df', df)
-    df_buy = df[df['transaction_name'] == 'buy']
-    print('----df_buy', df_buy)
-    df_sell = df[df['transaction_name'] == 'sell']
-    print('----df_sell', df_sell)
+    df_all_transactions_of_asset = pd.DataFrame(all_transactions_of_asset.values(),
+                                                # index=all_transactions_of_asset.values('id', 'transaction_name')
+                                                )
+    print('-----df', df_all_transactions_of_asset)
 
-    try:
-        asset = Asset.objects.get(ticker=ticker,
-                                  portfolio_name=portfolio_name,
-                                  agent=agent,
-                                  stock_market=stock_market,
-                                  asset_class=asset_class,
-                                  asset_type=asset_type,
-                                  currency_of_price=currency_of_price,
-                                  region=region,
-                                  currency_of_asset=currency_of_asset,
-                                  )
-        print('-------asset filter:', asset)
-    except Asset.DoesNotExist as err:
-        print("---Актив не найден:", err)
+    df_buy_transactions_of_asset = df_all_transactions_of_asset[
+        df_all_transactions_of_asset['transaction_name'] == 'buy']
+    print('----df_buy', df_buy_transactions_of_asset)
 
+    df_sell_transactions_of_asset = df_all_transactions_of_asset[
+        df_all_transactions_of_asset['transaction_name'] == 'sell']
+    print('----df_sell', df_sell_transactions_of_asset)
+
+    total_quantity = (df_buy_transactions_of_asset['quantity'].sum()
+                      - df_sell_transactions_of_asset['quantity'].sum())
+    print('----total_quantity', total_quantity)
+
+    one_unit_current_price_in_currency = take_price()
+
+    total_expenses_in_currency = (df_buy_transactions_of_asset['total_price_in_currency'].sum()
+                                  - df_sell_transactions_of_asset['total_price_in_currency'].sum())
+    print('----total_expenses_in_currency', total_expenses_in_currency)
+
+    total_expenses_in_rub = (df_buy_transactions_of_asset['total_price_in_rub'].sum()
+                             - df_sell_transactions_of_asset['total_price_in_rub'].sum())
+    print('----total_expenses_in_rub', total_expenses_in_rub)
+
+    average_buying_price_of_one_unit_in_currency = total_expenses_in_currency / total_quantity
+    print('----average_buying_price_of_one_unit_in_currency', average_buying_price_of_one_unit_in_currency)
+
+    average_buying_price_of_one_unit_in_rub = total_expenses_in_rub / total_quantity
+    print('----average_buying_price_of_one_unit_in_rub', average_buying_price_of_one_unit_in_rub)
+
+    asset = Asset.objects.update_or_create(ticker=ticker,
+                                           portfolio_name=portfolio_name,
+                                           agent=agent,
+                                           stock_market=stock_market,
+                                           asset_class=asset_class,
+                                           asset_type=asset_type,
+                                           currency_of_price=currency_of_price,
+                                           region=region,
+                                           currency_of_asset=currency_of_asset,
+                                           defaults={
+                                               'name': asset_name,
+                                               'total_quantity': total_quantity,
+                                               'one_unit_current_price_in_currency':
+                                                   one_unit_current_price_in_currency,
+                                               'total_expenses_in_currency': total_expenses_in_currency,
+                                               'total_expenses_in_rub': total_expenses_in_rub,
+                                               'average_buying_price_of_one_unit_in_currency':
+                                                   average_buying_price_of_one_unit_in_currency,
+                                               'average_buying_price_of_one_unit_in_rub':
+                                                   average_buying_price_of_one_unit_in_rub,
+                                           })
+    print('-------asset filter после update_or_create:', asset)
 
 
 class TransactionsView(ModelViewSet):
