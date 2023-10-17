@@ -209,10 +209,9 @@
 #         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-
-
 import decimal
 
+import pandas as pd
 from django.db.models import Model
 from django.shortcuts import render
 from rest_framework import status
@@ -259,7 +258,7 @@ def asset_processing_create(transaction):
 
     def take_price():
         """
-        TODO: написать функционал
+        TODO: написать функционал, возможно необходимо вынести эту функцию из asset_processing_create
         Обращается к стороннему апи, чтобы получить стоимость актива (а так же в этот
         момент добавляться в таблицу, в которой будут храниться данные о ценах на все купленные активы.
         Эти таблицы будут обновляться с API по кнопке)
@@ -309,6 +308,9 @@ def asset_processing_create(transaction):
             #                                      * decimal.Decimal(quantity))
             # asset.total_expenses_in_rub -= (asset.average_buying_price_of_one_unit_in_rub
             #                                 * decimal.Decimal(quantity))
+
+            # новый способ расчета, чтоб при продаже всего имеющегося количества актива сумма затрат становилась 0,
+            #   т.к. при старом способе из-за округления оставался остаток в копейках
             asset.total_expenses_in_currency -= ((asset.total_expenses_in_currency / asset.total_quantity)
                                                  * decimal.Decimal(quantity))
             asset.total_expenses_in_rub -= ((asset.total_expenses_in_rub / asset.total_quantity)
@@ -393,41 +395,60 @@ def asset_processing_create(transaction):
         return new_asset
 
 
-def asset_processing_destroy(transaction):
+def asset_processing_destroy(asset):
     """
-    Поиск актива (Asset) для удаляемой операции, и обновление информации в нем, на основании удаления операции.
     TODO: добавить уведомление, если при удалении операции получится ситуация, когда количество актива < 0
     """
-    asset = transaction.asset  # получаем объект актива
-    transaction_name = transaction.transaction_name
-    # quantity = transaction.quantity
-    print('asset--------', type(asset))
+    # print("----пришел asset в asset_processing_destroy:", asset)
+    all_transactions_of_asset = Transaction.objects.filter(asset=asset)
+    # print("---all_transactions_of_asset:", all_transactions_of_asset)
 
-    if transaction_name == 'buy':
-        # вычитаем количество, указанное в удаляемой операции из общемго количества
-        asset.total_quantity -= decimal.Decimal(transaction.quantity)
-        asset.total_expenses_in_currency -= (asset.average_buying_price_of_one_unit_in_currency
-                                             * decimal.Decimal(transaction.quantity))
-        asset.total_expenses_in_rub -= (asset.average_buying_price_of_one_unit_in_rub
-                                        * decimal.Decimal(transaction.quantity))
+    # если по данному Активу нет транзакций (после удаления текущей транзакции), то заполняем нулями данные в Активе
+    if not all_transactions_of_asset:
+        asset.total_quantity = 0
+        asset.total_expenses_in_currency = 0
+        asset.total_expenses_in_rub = 0
+        asset.average_buying_price_of_one_unit_in_currency = 0
+        asset.average_buying_price_of_one_unit_in_rub = 0
+        asset.save()
+        return
 
-        # TODO: возможно эти два поля можно перенести в модель и сделать рассчитываемыми (property)
-        asset.average_buying_price_of_one_unit_in_currency = (asset.total_expenses_in_currency
-                                                              / asset.total_quantity)
-        asset.average_buying_price_of_one_unit_in_rub = (asset.total_expenses_in_rub
-                                                         / asset.total_quantity)
+    # если по данному активу есть транзакции - делаем пересчет показателей Актива,
+    #   на основе оставшихся транзакций (после удаления текущей транзакции)
+    else:
+        print("YES")
+        df_all_transactions_of_asset = pd.DataFrame(all_transactions_of_asset.values())
+        sorted_df_all_transactions_of_asset = df_all_transactions_of_asset.sort_values(by="id", ascending=True)
 
-    if transaction_name == 'sell':
-        # прибавляем количество, указанное в удаляемой операции к общему количеству
-        asset.total_quantity += decimal.Decimal(transaction.quantity)
+        sorted_df_all_transactions_of_asset["average_price_in_currency_at_transact_date"] = None
 
-        asset.total_expenses_in_currency += (asset.average_buying_price_of_one_unit_in_currency
-                                             * decimal.Decimal(transaction.quantity))
-        asset.total_expenses_in_rub += (asset.average_buying_price_of_one_unit_in_rub
-                                        * decimal.Decimal(transaction.quantity))
+        # print("----df_all_transactions_of_asset:",
+        #       sorted_df_all_transactions_of_asset.loc[:, ["id",
+        #                                                   "transaction_name",
+        #                                                   "ticker",
+        #                                                   "asset_id",
+        #                                                   "quantity",
+        #                                                   "one_unit_buying_price_in_currency",
+        #                                                   "total_price_in_currency",
+        #                                                   "total_price_in_rub",
+        #                                                   ]])
+        for index, transact in sorted_df_all_transactions_of_asset.iterrows():
+            print(transact)
+            sorted_df_all_transactions_of_asset.at[
+                index, "average_price_in_currency_at_transact_date"] = 5
+            print(transact)
 
-    asset.save()
-    return
+        print("----df_all_transactions_of_asset:",
+              sorted_df_all_transactions_of_asset.loc[:, ["id",
+                                                          "transaction_name",
+                                                          # "ticker",
+                                                          # "asset_id",
+                                                          "quantity",
+                                                          "one_unit_buying_price_in_currency",
+                                                          "total_price_in_currency",
+                                                          # "total_price_in_rub",
+                                                          "average_price_in_currency_at_transact_date",
+                                                          ]])
 
 
 class TransactionsView(ModelViewSet):
@@ -479,6 +500,7 @@ class TransactionsView(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        # asset_processing_destroy(transaction=instance)
-        self.perform_destroy(instance)
+        instance_asset = instance.asset
+        # self.perform_destroy(instance)
+        asset_processing_destroy(asset=instance_asset)
         return Response(status=status.HTTP_204_NO_CONTENT)
