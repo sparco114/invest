@@ -416,11 +416,13 @@ def asset_processing_destroy(asset):
     # если по данному активу есть транзакции - делаем пересчет показателей Актива,
     #   на основе оставшихся транзакций (после удаления текущей транзакции)
     else:
-        print("YES")
         df_all_transactions_of_asset = pd.DataFrame(all_transactions_of_asset.values())
+        # TODO: !! сейчас сортировка по id, но нужно сортировать по порядку, в котором операции совершались
+        #  (нужно подумать как определять такой порядок)
         sorted_df_all_transactions_of_asset = df_all_transactions_of_asset.sort_values(by="id", ascending=True)
 
-        sorted_df_all_transactions_of_asset["average_price_in_currency_at_transact_date"] = None
+        sorted_df_all_transactions_of_asset["total_expenses_in_currency_at_transact_date"] = 0.0
+        sorted_df_all_transactions_of_asset["total_quantity_at_transact_date"] = 0.0
 
         # print("----df_all_transactions_of_asset:",
         #       sorted_df_all_transactions_of_asset.loc[:, ["id",
@@ -433,10 +435,72 @@ def asset_processing_destroy(asset):
         #                                                   "total_price_in_rub",
         #                                                   ]])
         for index, transact in sorted_df_all_transactions_of_asset.iterrows():
-            print(transact)
-            sorted_df_all_transactions_of_asset.at[
-                index, "average_price_in_currency_at_transact_date"] = 5
-            print(transact)
+            # print(transact)
+            print(f"START LOOP {index}")
+            previous_ind = int(str(index)) - 1  # индекс предыдущей транзакции
+            print("-----previous_ind:", previous_ind)
+
+            if transact.transaction_name == "buy":
+                # берем значение суммы затрат из предыдущей операции,но если это самая первая операция
+                #  (т.е. предыдущий индекс -1), то просто берем значение 0.0
+                previous_total_expenses_in_currency_at_transact_date = \
+                    sorted_df_all_transactions_of_asset.at[
+                        previous_ind, "total_expenses_in_currency_at_transact_date"] if previous_ind >= 0 else 0.0
+
+                # преобразуем из decimal в int, для записи в DataFrame, т.к. pd не поддерживает decimal
+                total_expenses_in_currency_at_transact_date = int(
+                    decimal.Decimal(previous_total_expenses_in_currency_at_transact_date)
+                    + transact.total_price_in_currency)
+
+                # записываем полученное значение "общих затрат на дату текущей операции" в таблицу
+                sorted_df_all_transactions_of_asset.at[
+                    index,
+                    "total_expenses_in_currency_at_transact_date"] = total_expenses_in_currency_at_transact_date
+
+                # далее то же самое проделываем с общим количеством на дату операции
+                previous_total_quantity_at_transact_date = \
+                    sorted_df_all_transactions_of_asset.at[
+                        previous_ind, "total_quantity_at_transact_date"] if previous_ind >= 0 else 0.0
+
+                total_quantity_at_transact_date = int(
+                    decimal.Decimal(previous_total_quantity_at_transact_date)
+                    + transact.quantity)
+
+                sorted_df_all_transactions_of_asset.at[
+                    index,
+                    "total_quantity_at_transact_date"] = total_quantity_at_transact_date
+
+            if transact.transaction_name == "sell":
+                previous_total_quantity_at_transact_date = \
+                    sorted_df_all_transactions_of_asset.at[
+                        previous_ind, "total_quantity_at_transact_date"] if previous_ind >= 0 else 0.0
+
+                total_quantity_at_transact_date = int(decimal.Decimal(previous_total_quantity_at_transact_date)
+                                                      - transact.quantity)
+
+                sorted_df_all_transactions_of_asset.at[
+                    index,
+                    "total_quantity_at_transact_date"] = total_quantity_at_transact_date
+
+                previous_total_expenses_in_currency_at_transact_date = \
+                    sorted_df_all_transactions_of_asset.at[
+                        previous_ind, "total_expenses_in_currency_at_transact_date"] if previous_ind >= 0 else 0.0
+
+                previous_average_price = (previous_total_expenses_in_currency_at_transact_date
+                                          / previous_total_quantity_at_transact_date)
+
+                total_expenses_in_currency_at_transact_date = \
+                    (decimal.Decimal(previous_total_expenses_in_currency_at_transact_date)
+                     - (transact.quantity * decimal.Decimal(previous_average_price)))
+
+                sorted_df_all_transactions_of_asset.at[
+                    index,
+                    "total_expenses_in_currency_at_transact_date"] = \
+                    total_expenses_in_currency_at_transact_date
+
+            print(sorted_df_all_transactions_of_asset.at[
+                    5,
+                    "total_expenses_in_currency_at_transact_date"])
 
         print("----df_all_transactions_of_asset:",
               sorted_df_all_transactions_of_asset.loc[:, ["id",
@@ -447,7 +511,8 @@ def asset_processing_destroy(asset):
                                                           "one_unit_buying_price_in_currency",
                                                           "total_price_in_currency",
                                                           # "total_price_in_rub",
-                                                          "average_price_in_currency_at_transact_date",
+                                                          "total_expenses_in_currency_at_transact_date",
+                                                          "total_quantity_at_transact_date",
                                                           ]])
 
 
