@@ -421,8 +421,10 @@ def asset_processing_destroy(asset):
         #  (нужно подумать как определять такой порядок)
         sorted_df_all_transactions_of_asset = df_all_transactions_of_asset.sort_values(by="id", ascending=True)
 
-        sorted_df_all_transactions_of_asset["total_expenses_in_currency_at_transact_date"] = 0.0
+        # добавляем временные столбцы для рассчета итоговых показателей Актива
         sorted_df_all_transactions_of_asset["total_quantity_at_transact_date"] = 0.0
+        sorted_df_all_transactions_of_asset["total_expenses_in_currency_at_transact_date"] = 0.0
+        sorted_df_all_transactions_of_asset["total_expenses_in_rub_at_transact_date"] = 0.0
 
         # print("----df_all_transactions_of_asset:",
         #       sorted_df_all_transactions_of_asset.loc[:, ["id",
@@ -434,73 +436,79 @@ def asset_processing_destroy(asset):
         #                                                   "total_price_in_currency",
         #                                                   "total_price_in_rub",
         #                                                   ]])
+
+        # построчно перебираем все операции, и заполняем временные показатели (общее количество и общая сумма затрат)
+        #  для каждой операции
         for index, transact in sorted_df_all_transactions_of_asset.iterrows():
             # print(transact)
             print(f"START LOOP {index}")
             previous_ind = int(str(index)) - 1  # индекс предыдущей транзакции
             print("-----previous_ind:", previous_ind)
 
+            # берем значение "общего количества актива на дату операции" и "общей суммы затрат на дату операции"
+            #  из предыдущей операции
+            if previous_ind >= 0:
+                previous_total_quantity_at_transact_date = \
+                    sorted_df_all_transactions_of_asset.at[previous_ind, "total_quantity_at_transact_date"]
+
+                previous_total_expenses_in_currency_at_transact_date = \
+                    sorted_df_all_transactions_of_asset.at[previous_ind, "total_expenses_in_currency_at_transact_date"]
+
+                previous_total_expenses_in_rub_at_transact_date = \
+                    sorted_df_all_transactions_of_asset.at[previous_ind, "total_expenses_in_rub_at_transact_date"]
+
+            #  но если предыдущей операции нет (т.е. предыдущий индекс -1), тогда значения указываем как 0.0
+            else:
+                previous_total_quantity_at_transact_date = 0.0
+                previous_total_expenses_in_currency_at_transact_date = 0.0
+                previous_total_expenses_in_rub_at_transact_date = 0.0
+
             if transact.transaction_name == "buy":
-                # берем значение суммы затрат из предыдущей операции,но если это самая первая операция
-                #  (т.е. предыдущий индекс -1), то просто берем значение 0.0
-                previous_total_expenses_in_currency_at_transact_date = \
-                    sorted_df_all_transactions_of_asset.at[
-                        previous_ind, "total_expenses_in_currency_at_transact_date"] if previous_ind >= 0 else 0.0
-
-                # преобразуем из decimal в int, для записи в DataFrame, т.к. pd не поддерживает decimal
-                total_expenses_in_currency_at_transact_date = int(
-                    decimal.Decimal(previous_total_expenses_in_currency_at_transact_date)
-                    + transact.total_price_in_currency)
-
-                # записываем полученное значение "общих затрат на дату текущей операции" в таблицу
-                sorted_df_all_transactions_of_asset.at[
-                    index,
-                    "total_expenses_in_currency_at_transact_date"] = total_expenses_in_currency_at_transact_date
-
-                # далее то же самое проделываем с общим количеством на дату операции
-                previous_total_quantity_at_transact_date = \
-                    sorted_df_all_transactions_of_asset.at[
-                        previous_ind, "total_quantity_at_transact_date"] if previous_ind >= 0 else 0.0
-
-                total_quantity_at_transact_date = int(
-                    decimal.Decimal(previous_total_quantity_at_transact_date)
-                    + transact.quantity)
-
-                sorted_df_all_transactions_of_asset.at[
-                    index,
-                    "total_quantity_at_transact_date"] = total_quantity_at_transact_date
-
-            if transact.transaction_name == "sell":
-                previous_total_quantity_at_transact_date = \
-                    sorted_df_all_transactions_of_asset.at[
-                        previous_ind, "total_quantity_at_transact_date"] if previous_ind >= 0 else 0.0
-
-                total_quantity_at_transact_date = int(decimal.Decimal(previous_total_quantity_at_transact_date)
-                                                      - transact.quantity)
-
-                sorted_df_all_transactions_of_asset.at[
-                    index,
-                    "total_quantity_at_transact_date"] = total_quantity_at_transact_date
-
-                previous_total_expenses_in_currency_at_transact_date = \
-                    sorted_df_all_transactions_of_asset.at[
-                        previous_ind, "total_expenses_in_currency_at_transact_date"] if previous_ind >= 0 else 0.0
-
-                previous_average_price = (previous_total_expenses_in_currency_at_transact_date
-                                          / previous_total_quantity_at_transact_date)
+                print("---TYPE--transact.quantity", type(transact.quantity))
+                # преобразуем из decimal в float, для записи в DataFrame, т.к. pd не поддерживает decimal
+                total_quantity_at_transact_date = \
+                    float(decimal.Decimal(previous_total_quantity_at_transact_date)
+                          + transact.quantity)
 
                 total_expenses_in_currency_at_transact_date = \
-                    (decimal.Decimal(previous_total_expenses_in_currency_at_transact_date)
-                     - (transact.quantity * decimal.Decimal(previous_average_price)))
+                    float(decimal.Decimal(previous_total_expenses_in_currency_at_transact_date)
+                          + transact.total_price_in_currency)
 
-                sorted_df_all_transactions_of_asset.at[
-                    index,
-                    "total_expenses_in_currency_at_transact_date"] = \
-                    total_expenses_in_currency_at_transact_date
+                total_expenses_in_rub_at_transact_date = \
+                    float(decimal.Decimal(previous_total_expenses_in_rub_at_transact_date)
+                          + transact.total_price_in_rub)
 
-            print(sorted_df_all_transactions_of_asset.at[
-                    5,
-                    "total_expenses_in_currency_at_transact_date"])
+            elif transact.transaction_name == "sell":
+                total_quantity_at_transact_date = float(decimal.Decimal(previous_total_quantity_at_transact_date)
+                                                        - transact.quantity)
+
+                previous_average_price_in_currency = (previous_total_expenses_in_currency_at_transact_date
+                                                      / previous_total_quantity_at_transact_date)
+
+                previous_average_price_in_rub = (previous_total_expenses_in_rub_at_transact_date
+                                                 / previous_total_quantity_at_transact_date)
+
+                # вычитаем из общего количества затрат количество проданого актива умноженное на среднюю цену покупки
+                total_expenses_in_currency_at_transact_date = \
+                    float(decimal.Decimal(previous_total_expenses_in_currency_at_transact_date)
+                          - (transact.quantity * decimal.Decimal(previous_average_price_in_currency)))
+
+                total_expenses_in_rub_at_transact_date = \
+                    float(decimal.Decimal(previous_total_expenses_in_rub_at_transact_date)
+                          - (transact.quantity * decimal.Decimal(previous_average_price_in_rub)))
+
+            else:
+                raise TypeError(f"Некорректный вид операции - '{transact.transaction_name}' от {transact.date}")
+
+            # записываем полученное значение "общего количества актива на дату текущей операции" в таблицу
+            sorted_df_all_transactions_of_asset.at[index, "total_quantity_at_transact_date"] = \
+                total_quantity_at_transact_date
+
+            # записываем полученное значение "общей суммы затрат на дату текущей операции" в таблицу
+            sorted_df_all_transactions_of_asset.at[index, "total_expenses_in_currency_at_transact_date"] = \
+                total_expenses_in_currency_at_transact_date
+            sorted_df_all_transactions_of_asset.at[index, "total_expenses_in_rub_at_transact_date"] = \
+                total_expenses_in_rub_at_transact_date
 
         print("----df_all_transactions_of_asset:",
               sorted_df_all_transactions_of_asset.loc[:, ["id",
@@ -509,11 +517,24 @@ def asset_processing_destroy(asset):
                                                           # "asset_id",
                                                           "quantity",
                                                           "one_unit_buying_price_in_currency",
-                                                          "total_price_in_currency",
-                                                          # "total_price_in_rub",
-                                                          "total_expenses_in_currency_at_transact_date",
+                                                          # "total_price_in_currency",
+                                                          "total_price_in_rub",
+                                                          # "total_expenses_in_currency_at_transact_date",
+                                                          "total_expenses_in_rub_at_transact_date",
                                                           "total_quantity_at_transact_date",
                                                           ]])
+
+        # print(sorted_df_all_transactions_of_asset.at[5, "total_expenses_in_currency_at_transact_date"])
+        # print(sorted_df_all_transactions_of_asset.iloc[-1, 21])
+        # print(sorted_df_all_transactions_of_asset.iloc[-1, 22])
+        # print(sorted_df_all_transactions_of_asset.iloc[-1, 23])
+    asset.total_quantity = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 21])
+    asset.total_expenses_in_currency = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 22])
+    asset.total_expenses_in_rub = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 23])
+    asset.average_buying_price_of_one_unit_in_currency = asset.total_expenses_in_currency / asset.total_quantity
+    asset.average_buying_price_of_one_unit_in_rub = asset.total_expenses_in_rub / asset.total_quantity
+    asset.save()
+    return
 
 
 class TransactionsView(ModelViewSet):
@@ -531,7 +552,7 @@ class TransactionsView(ModelViewSet):
             err_data = f"Ошибка: {err}"
             return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
         except Exception as err:
-            err_data = f"Не удалось получить/создать Актив для транзакции. Ошибка: {err}"
+            err_data = f"Не удалось получить/создать Актив для транзакции."
             print(err_data, type(err))
             return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
         # print('request.data----------', request.data)
@@ -566,6 +587,12 @@ class TransactionsView(ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance_asset = instance.asset
-        # self.perform_destroy(instance)
-        asset_processing_destroy(asset=instance_asset)
+        self.perform_destroy(instance)
+        try:
+            asset_processing_destroy(asset=instance_asset)
+        except Exception as err:
+            err_data = f"Не удалось пересчитать показатели Актив после удаления транзакции."
+            print(err_data, type(err))
+            return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
