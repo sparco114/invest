@@ -395,12 +395,22 @@ def asset_processing_create(transaction):
         return new_asset
 
 
-def asset_processing_destroy(asset):
+class NegativeAssetQuantityError(Exception):
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+class TransactionTypeError(Exception):
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+def asset_processing_destroy(asset, transaction_id):
     """
     TODO: добавить уведомление, если при удалении операции получится ситуация, когда количество актива < 0
     """
     # print("----пришел asset в asset_processing_destroy:", asset)
-    all_transactions_of_asset = Transaction.objects.filter(asset=asset)
+    all_transactions_of_asset = Transaction.objects.filter(asset=asset).exclude(id=transaction_id)
     # print("---all_transactions_of_asset:", all_transactions_of_asset)
 
     # если по данному Активу нет транзакций (после удаления текущей транзакции), то заполняем нулями данные в Активе
@@ -418,24 +428,13 @@ def asset_processing_destroy(asset):
     else:
         df_all_transactions_of_asset = pd.DataFrame(all_transactions_of_asset.values())
         # TODO: !! сейчас сортировка по id, но нужно сортировать по порядку, в котором операции совершались
-        #  (нужно подумать как определять такой порядок)
+        #  (нужно решить как определять такой порядок)
         sorted_df_all_transactions_of_asset = df_all_transactions_of_asset.sort_values(by="id", ascending=True)
 
         # добавляем временные столбцы для рассчета итоговых показателей Актива
         sorted_df_all_transactions_of_asset["total_quantity_at_transact_date"] = 0.0
         sorted_df_all_transactions_of_asset["total_expenses_in_currency_at_transact_date"] = 0.0
         sorted_df_all_transactions_of_asset["total_expenses_in_rub_at_transact_date"] = 0.0
-
-        # print("----df_all_transactions_of_asset:",
-        #       sorted_df_all_transactions_of_asset.loc[:, ["id",
-        #                                                   "transaction_name",
-        #                                                   "ticker",
-        #                                                   "asset_id",
-        #                                                   "quantity",
-        #                                                   "one_unit_buying_price_in_currency",
-        #                                                   "total_price_in_currency",
-        #                                                   "total_price_in_rub",
-        #                                                   ]])
 
         # построчно перебираем все операции, и заполняем временные показатели (общее количество и общая сумма затрат)
         #  для каждой операции
@@ -464,7 +463,7 @@ def asset_processing_destroy(asset):
                 previous_total_expenses_in_rub_at_transact_date = 0.0
 
             if transact.transaction_name == "buy":
-                print("---TYPE--transact.quantity", type(transact.quantity))
+
                 # преобразуем из decimal в float, для записи в DataFrame, т.к. pd не поддерживает decimal
                 total_quantity_at_transact_date = \
                     float(decimal.Decimal(previous_total_quantity_at_transact_date)
@@ -482,6 +481,14 @@ def asset_processing_destroy(asset):
                 total_quantity_at_transact_date = float(decimal.Decimal(previous_total_quantity_at_transact_date)
                                                         - transact.quantity)
 
+                if total_quantity_at_transact_date < 0:
+                    # print("-----МЕНЬШЕ НУЛЯ:", total_quantity_at_transact_date)
+                    next_transaction_date = sorted_df_all_transactions_of_asset.at[int(str(index)) + 1, 'date']
+                    raise NegativeAssetQuantityError(f"Невозможно удалить операцю, т.к. в результате удаления "
+                                                     f"возникает отрицательное значение количества этого актива "
+                                                     f"'{total_quantity_at_transact_date}' на дату следующей операции: "
+                                                     f"{next_transaction_date}")
+
                 previous_average_price_in_currency = (previous_total_expenses_in_currency_at_transact_date
                                                       / previous_total_quantity_at_transact_date)
 
@@ -498,7 +505,8 @@ def asset_processing_destroy(asset):
                           - (transact.quantity * decimal.Decimal(previous_average_price_in_rub)))
 
             else:
-                raise TypeError(f"Некорректный вид операции - '{transact.transaction_name}' от {transact.date}")
+                raise TransactionTypeError(
+                    f"Некорректный вид операции - '{transact.transaction_name}' от {transact.date}")
 
             # записываем полученное значение "общего количества актива на дату текущей операции" в таблицу
             sorted_df_all_transactions_of_asset.at[index, "total_quantity_at_transact_date"] = \
@@ -525,14 +533,27 @@ def asset_processing_destroy(asset):
                                                           ]])
 
         # print(sorted_df_all_transactions_of_asset.at[5, "total_expenses_in_currency_at_transact_date"])
-        # print(sorted_df_all_transactions_of_asset.iloc[-1, 21])
-        # print(sorted_df_all_transactions_of_asset.iloc[-1, 22])
-        # print(sorted_df_all_transactions_of_asset.iloc[-1, 23])
+    print(sorted_df_all_transactions_of_asset.iloc[-1, 21])
+    print(sorted_df_all_transactions_of_asset.iloc[-1, 22])
+    print(sorted_df_all_transactions_of_asset.iloc[-1, 23])
+
+    # перезаписываем в Активе занчение 'общее количество' на значени 'общее количество', полученное в последней операции
     asset.total_quantity = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 21])
-    asset.total_expenses_in_currency = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 22])
-    asset.total_expenses_in_rub = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 23])
-    asset.average_buying_price_of_one_unit_in_currency = asset.total_expenses_in_currency / asset.total_quantity
-    asset.average_buying_price_of_one_unit_in_rub = asset.total_expenses_in_rub / asset.total_quantity
+
+    # если 'общее количество' в Активе получилось 0, то во все необходимые значения в Активе тоже записываем 0
+    if asset.total_quantity == 0:
+        asset.total_expenses_in_currency = decimal.Decimal('0.0')
+        asset.total_expenses_in_rub = decimal.Decimal('0.0')
+        asset.average_buying_price_of_one_unit_in_currency = decimal.Decimal('0.0')
+        asset.average_buying_price_of_one_unit_in_rub = decimal.Decimal('0.0')
+
+    # если 'общее количество' в Активе не 0, то все необходимые значения в Активе перезаписываем на значения,
+    #  рассчитанные в последней операции
+    else:
+        asset.total_expenses_in_currency = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 22])
+        asset.total_expenses_in_rub = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 23])
+        asset.average_buying_price_of_one_unit_in_currency = asset.total_expenses_in_currency / asset.total_quantity
+        asset.average_buying_price_of_one_unit_in_rub = asset.total_expenses_in_rub / asset.total_quantity
     asset.save()
     return
 
@@ -586,13 +607,26 @@ class TransactionsView(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+
+        # TODO: если ничего не потребуется длеать после удаления операции, тогда можно перенести этот функционал в
+        #  perform_destroy, то есть переопределить не destroy, а perform_destroy
         instance_asset = instance.asset
-        self.perform_destroy(instance)
         try:
-            asset_processing_destroy(asset=instance_asset)
-        except Exception as err:
-            err_data = f"Не удалось пересчитать показатели Актив после удаления транзакции."
-            print(err_data, type(err))
+            asset_processing_destroy(asset=instance_asset, transaction_id=instance.id)
+        except NegativeAssetQuantityError as err:
+            err_data = err.args
+            print(err_data, type(err), err)
             return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
+        except TransactionTypeError as err:
+            err_data = err.args
+            print(err_data, type(err), err)
+            return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as err:
+            err_data = f"Не удалось пересчитать показатели Актива. Транзакция не удалена."
+            print(err_data, type(err), err)
+            return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
+
+        # print("---ОПЕРАЦИЯ БУДЕТ УДАЛЕНА в perform_destroy")
+        self.perform_destroy(instance)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
