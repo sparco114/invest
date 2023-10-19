@@ -12,7 +12,7 @@ class Transaction(models.Model):
     ]
 
     date = models.DateField()
-    transaction_name = models.CharField(max_length=20, choices=TRANSACTION_NAMES)
+    name = models.CharField(max_length=20, choices=TRANSACTION_NAMES)
     ticker = models.CharField(max_length=5)
     asset = models.ForeignKey(Asset, max_length=5, on_delete=models.CASCADE, related_name='transactions')
     asset_name = models.CharField(max_length=40)
@@ -61,9 +61,10 @@ class Transaction(models.Model):
     #  автоматически вычислялся и подставлялся результат в поле deductions_in_rub
     deductions_in_rub = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
 
+    # TODO: добавить поля
     # created_at =
     # updated_at =
     # creator =
 
     def __str__(self):
-        return f"id: {self.pk} - '{self.transaction_name}', '{self.ticker}', '{self.quantity}'"
+        return f"id: {self.pk} - '{self.name}', '{self.ticker}', '{self.quantity}'"

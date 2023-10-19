@@ -3,8 +3,9 @@ from decimal import Decimal
 
 from src.fin_attributes.models import Portfolio, Agent, StockMarket, AssetClass, AssetType, Currency, Region
 
+
 # TODO: подумать есть ли смысл брать курс прямо на текущий момент, если стоимости акций будут взяты из таблицы,
-#   то есть стоимости будут на какой-то другой момент. Или  лучше курс тоже записывать в ту таблицу,
+#   то есть их стоимости будут на какой-то другой момент. Или  лучше курс тоже записывать в ту же таблицу,
 #   и обновлять одновременно и курс, и стоимости акций.
 def take_current_currency_rate_to_rub():
     """
@@ -19,6 +20,7 @@ def take_current_currency_rate_to_rub():
 
 
 class Asset(models.Model):
+    # TODO: подумать нужно ли здесь тоже добавить поля 'дата создания' и 'дата последнего изменения'
     ticker = models.CharField(max_length=5)
     name = models.CharField(max_length=50)
     portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)

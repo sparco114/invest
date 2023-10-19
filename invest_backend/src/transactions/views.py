@@ -121,18 +121,18 @@
 #     )
 #     # print('-------all_transactions_of_asset - filter:', all_transactions_of_asset)
 #     df_all_transactions_of_asset = pd.DataFrame(all_transactions_of_asset.values(),
-#                                                 # index=all_transactions_of_asset.values('id', 'transaction_name')
+#                                                 # index=all_transactions_of_asset.values('id', 'name')
 #                                                 )
-#     print('-----df', df_all_transactions_of_asset.loc[:, ["id", "transaction_name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
+#     print('-----df', df_all_transactions_of_asset.loc[:, ["id", "name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
 #
 #
 #     df_buy_transactions_of_asset = df_all_transactions_of_asset[
-#         df_all_transactions_of_asset['transaction_name'] == 'buy']
-#     print('----df_buy', df_buy_transactions_of_asset.loc[:, ["id", "transaction_name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
+#         df_all_transactions_of_asset['name'] == 'buy']
+#     print('----df_buy', df_buy_transactions_of_asset.loc[:, ["id", "name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
 #
 #     df_sell_transactions_of_asset = df_all_transactions_of_asset[
-#         df_all_transactions_of_asset['transaction_name'] == 'sell']
-#     print('----df_sell', df_sell_transactions_of_asset.loc[:, ["id", "transaction_name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
+#         df_all_transactions_of_asset['name'] == 'sell']
+#     print('----df_sell', df_sell_transactions_of_asset.loc[:, ["id", "name", "ticker", "quantity", "one_unit_buying_price_in_currency", "total_price_in_currency"]])
 #
 #
 #     total_quantity = (df_buy_transactions_of_asset['quantity'].sum()
@@ -224,28 +224,36 @@ from src.transactions.models import Transaction
 from src.transactions.serializer import TransactionsSerializer
 
 
-def asset_processing_create(transaction):
+def asset_processing_when_transaction_create(transaction):
     """
-    Поиск актива (Asset) для создаваемой операции, и обновление информации в нем, на основании этой операции.
-    Если актив (Asset) не найден - создание такого актива и заполнение информацией из операции.
-    :return: объект Актив (Asset)
+    Поиск актива (Asset) для создаваемой транзакции (Transaction), и обновление в нем данных, на основании
+    этой транзакции. Если Актив не найден - создание такого Актива и заполнение данными из транзакции, которые
+    получены в post запросе.
+
+    :param transaction: Полученный post запрос с данными, которые необходимы для создания новой транзакции
+    :type transaction: rest_framework.request.Request
+
+    :raises DoesNotExist: Если Актив не найден в БД и при этом создаваемая транзакция уменьшает количество Актива
+
+    :return: Объект Актив (Asset)
     """
     print('СРАБОТАЛ----asset_processing_create')
+    print(type(transaction))
     need_to_create_asset = False
-    ticker = transaction.data.get('ticker')
-    portfolio_name = transaction.data.get('portfolio_name') or None  # None - если прийдет пустая строка
-    agent = transaction.data.get('agent')
-    stock_market = transaction.data.get('stock_market')
-    asset_class = transaction.data.get('asset_class')
-    asset_type = transaction.data.get('asset_type') or None  # None - если прийдет пустая строка
-    currency_of_price = transaction.data.get('currency_of_price')
-    region = transaction.data.get('region') or None  # None - если прийдет пустая строка
-    currency_of_asset = transaction.data.get('currency_of_asset')
+    transaction_ticker = transaction.data.get('ticker')
+    transaction_portfolio_name = transaction.data.get('portfolio_name') or None  # None - если прийдет пустая строка
+    transaction_agent = transaction.data.get('agent')
+    transaction_stock_market = transaction.data.get('stock_market')
+    transaction_asset_class = transaction.data.get('asset_class')
+    transaction_asset_type = transaction.data.get('asset_type') or None  # None - если прийдет пустая строка
+    transaction_currency_of_price = transaction.data.get('currency_of_price')
+    transaction_region = transaction.data.get('region') or None  # None - если прийдет пустая строка
+    transaction_currency_of_asset = transaction.data.get('currency_of_asset')
 
-    transaction_name = transaction.data.get('transaction_name')
-    quantity = transaction.data.get('quantity')
-    total_price_in_currency = transaction.data.get('total_price_in_currency')
-    total_price_in_rub = transaction.data.get('total_price_in_rub')
+    transaction_name = transaction.data.get('name')
+    transaction_quantity = transaction.data.get('quantity')
+    transaction_total_price_in_currency = transaction.data.get('total_price_in_currency')
+    transaction_total_price_in_rub = transaction.data.get('total_price_in_rub')
 
     # print('ДО')
     # print(type(decimal.Decimal(quantity)))
@@ -267,35 +275,44 @@ def asset_processing_create(transaction):
         print('СРАБОТАЛ----take_price')
         return 300
 
+    # проверяем по данным из полученной в запросе транзакции существует ли Актив с такими данными
     try:
-        asset = Asset.objects.get(ticker=ticker,
-                                  portfolio_name__name=portfolio_name,
-                                  agent__name=agent,
-                                  stock_market__name=stock_market,
-                                  asset_class__name=asset_class,
-                                  asset_type__name=asset_type,
-                                  currency_of_price__name=currency_of_price,
-                                  region__name=region,
-                                  currency_of_asset__name=currency_of_asset,
+        asset = Asset.objects.get(ticker=transaction_ticker,
+                                  portfolio_name__name=transaction_portfolio_name,
+                                  agent__name=transaction_agent,
+                                  stock_market__name=transaction_stock_market,
+                                  asset_class__name=transaction_asset_class,
+                                  asset_type__name=transaction_asset_type,
+                                  currency_of_price__name=transaction_currency_of_price,
+                                  region__name=transaction_region,
+                                  currency_of_asset__name=transaction_currency_of_asset,
                                   )
         print('asset--------------try', asset)
-    except Asset.DoesNotExist as not_exist:
-        print('DoesNotExist---=--====', not_exist)
+
+    except Asset.DoesNotExist as err:
+        # print('DoesNotExist---=--====', not_exist)
+
+        # если актив не найден и создаваямая операция увеличивает или не изменяет количество Актива,
+        #  то ставим маркер в True, что нужно создать новый Актив
         if transaction_name == 'buy':
             need_to_create_asset = True
+
+        # для остальных операций (которые уменьшают количество Актива) поднимаем эту ошибку и информируем о том,
+        #  что количество актива получается отрицательным
         else:
-            # TODO: найти место, где сделать уведомление, если продаем количество актива, больше чем у нас есть
-            print("Невозможно продать актив, который отсутствует")
-            raise Asset.DoesNotExist("Невозможно продать актив, который отсутствует")
+            raise err
+
     # except Exception as err:
     #     print("Ошибка при получении актива:", type(err), err)
     #     raise err
+
+    # если Актив найден или стоит маркер (True) о необходимости создать Актив
     else:
-        print('asset--------------else', asset.__dict__)
+        # print('asset--------------else', asset.__dict__)
         if transaction_name == 'buy':
-            asset.total_quantity += decimal.Decimal(quantity)
-            asset.total_expenses_in_currency += decimal.Decimal(total_price_in_currency)
-            asset.total_expenses_in_rub += decimal.Decimal(total_price_in_rub)
+            asset.total_quantity += decimal.Decimal(transaction_quantity)
+            asset.total_expenses_in_currency += decimal.Decimal(transaction_total_price_in_currency)
+            asset.total_expenses_in_rub += decimal.Decimal(transaction_total_price_in_rub)
 
             # TODO: возможно эти два поля можно перенести в модель и сделать рассчитываемыми (property)
             asset.average_buying_price_of_one_unit_in_currency = (asset.total_expenses_in_currency
@@ -312,89 +329,94 @@ def asset_processing_create(transaction):
             # новый способ расчета, чтоб при продаже всего имеющегося количества актива сумма затрат становилась 0,
             #   т.к. при старом способе из-за округления оставался остаток в копейках
             asset.total_expenses_in_currency -= ((asset.total_expenses_in_currency / asset.total_quantity)
-                                                 * decimal.Decimal(quantity))
+                                                 * decimal.Decimal(transaction_quantity))
             asset.total_expenses_in_rub -= ((asset.total_expenses_in_rub / asset.total_quantity)
-                                            * decimal.Decimal(quantity))
+                                            * decimal.Decimal(transaction_quantity))
 
-            asset.total_quantity -= decimal.Decimal(quantity)
+            asset.total_quantity -= decimal.Decimal(transaction_quantity)
 
             # если после продажи количество актива будет 0, то обнуляем так же среднюю стоимость
+            #  (в ином случае ее просто не меняем)
             if asset.total_quantity == 0:
                 asset.average_buying_price_of_one_unit_in_currency = 0
                 asset.average_buying_price_of_one_unit_in_rub = 0
         asset.save()
-        return asset
+        return asset  # возвращаем Актив с обновленными данными
 
+    # Создание нового Актива, если он не найден, а текущая транзакция увеличивает или не изменяет его количество
     if need_to_create_asset:
-        # Создание нового актива (Asset)
         print('сработал need_to_create_asset----')
 
         # если в операции заполнено поле Портфель (иначе останется None)
-        if portfolio_name:
-            print('сработал if portfolio_name:----')
-            portfolio_name, portfolio_created = Portfolio.objects.get_or_create(name=portfolio_name)
-            print('portfolio----', portfolio_name)
+        if transaction_portfolio_name:
+            transaction_portfolio_name, portfolio_created = Portfolio.objects.get_or_create(
+                name=transaction_portfolio_name)
 
-        agent, agent_created = Agent.objects.get_or_create(name=agent)
-        print('agent----', agent)
+        transaction_agent, agent_created = Agent.objects.get_or_create(name=transaction_agent)
+        print('agent----', transaction_agent)
 
-        stock_market, stock_market_created = StockMarket.objects.get_or_create(name=stock_market)
-        print('stock_market----', stock_market)
+        transaction_stock_market, stock_market_created = StockMarket.objects.get_or_create(
+            name=transaction_stock_market)
+        print('stock_market----', transaction_stock_market)
 
-        asset_class, asset_class_created = AssetClass.objects.get_or_create(name=asset_class)
-        print('asset_class----', asset_class)
+        transaction_asset_class, asset_class_created = AssetClass.objects.get_or_create(name=transaction_asset_class)
+        print('asset_class----', transaction_asset_class)
 
         # если в операции заполнено поле Вид актива (иначе останется None)
-        if asset_type:
-            asset_type, asset_type_created = AssetType.objects.get_or_create(name=asset_type)
-            print('asset_type----', asset_type)
+        if transaction_asset_type:
+            transaction_asset_type, asset_type_created = AssetType.objects.get_or_create(name=transaction_asset_type)
+            print('asset_type----', transaction_asset_type)
 
         # если валюта цены и валюта покупки одинаковая - то создаем валюту в БД один раз
-        if currency_of_price == currency_of_asset:
-            currency_of_price, currency_of_price_created = Currency.objects.get_or_create(name=currency_of_price)
-            print('currency_of_price----', currency_of_price)
-            currency_of_asset = currency_of_price
+        if transaction_currency_of_price == transaction_currency_of_asset:
+            transaction_currency_of_price, currency_of_price_created = Currency.objects.get_or_create(
+                name=transaction_currency_of_price)
+            print('currency_of_price----', transaction_currency_of_price)
+            transaction_currency_of_asset = transaction_currency_of_price
 
         # если валюта цены и валюта покупки различается - то создаем в БД каждую по отдельности
         else:
-            currency_of_price, currency_of_price_created = Currency.objects.get_or_create(name=currency_of_price)
-            print('currency_of_price----', currency_of_price)
-            currency_of_asset, currency_of_asset_created = Currency.objects.get_or_create(name=currency_of_asset)
-            print('currency_of_asset----', currency_of_asset)
+            transaction_currency_of_price, currency_of_price_created = Currency.objects.get_or_create(
+                name=transaction_currency_of_price)
+            print('currency_of_price----', transaction_currency_of_price)
+            transaction_currency_of_asset, currency_of_asset_created = Currency.objects.get_or_create(
+                name=transaction_currency_of_asset)
+            print('currency_of_asset----', transaction_currency_of_asset)
 
         # если в операции заполнено поле Регион (иначе останется None)
-        if region:
-            region, currency_created = Region.objects.get_or_create(name=region)
-            print('region----', region)
+        if transaction_region:
+            transaction_region, currency_created = Region.objects.get_or_create(name=transaction_region)
+            print('region----', transaction_region)
 
         # TODO: Добавить условие удаления созданных fin_attributes, если при создании актива будет ошибка
         new_asset = Asset.objects.create(
-            ticker=ticker,
+            ticker=transaction_ticker,
 
             # выше, при поиске актива не используем поле name (asset_name), потому что наименование (компании)
-            # может измениться, в этом случае будет просто записано новое полученное в запросе
+            # может измениться, в этом случае будет просто записано новое название, полученное в запросе
             name=transaction.data.get('asset_name'),
-            portfolio_name=portfolio_name,
-            agent=agent,
-            stock_market=stock_market,
-            asset_class=asset_class,
-            asset_type=asset_type,
-            currency_of_price=currency_of_price,
-            region=region,
-            currency_of_asset=currency_of_asset,
-            total_quantity=quantity,
+            portfolio_name=transaction_portfolio_name,
+            agent=transaction_agent,
+            stock_market=transaction_stock_market,
+            asset_class=transaction_asset_class,
+            asset_type=transaction_asset_type,
+            currency_of_price=transaction_currency_of_price,
+            region=transaction_region,
+            currency_of_asset=transaction_currency_of_asset,
+            total_quantity=transaction_quantity,
             one_unit_current_price_in_currency=take_price(),
             # TODO: подумать где вычитать расходы - здесь или где-то в другм месте
-            total_expenses_in_currency=total_price_in_currency,
-            total_expenses_in_rub=total_price_in_rub,
+            total_expenses_in_currency=transaction_total_price_in_currency,
+            total_expenses_in_rub=transaction_total_price_in_rub,
             average_buying_price_of_one_unit_in_currency=transaction.data.get(
                 'one_unit_buying_price_in_currency'),
-            # TODO: !! перенести это в модель Транзакции, чтоб там было это поле
-            average_buying_price_of_one_unit_in_rub=decimal.Decimal(total_price_in_rub) / decimal.Decimal(quantity)
+            average_buying_price_of_one_unit_in_rub=(decimal.Decimal(transaction_total_price_in_rub)
+                                                     / decimal.Decimal(transaction_quantity))
         )
-        return new_asset
+        return new_asset  # возвращаем новый созданный Актив, заполненный акутальными данными
 
 
+# TODO: можно вынести кастомные ошибки в отдельный модуль
 class NegativeAssetQuantityError(Exception):
     def __init__(self, *args, **kwargs):
         pass
@@ -405,12 +427,30 @@ class TransactionTypeError(Exception):
         pass
 
 
-def asset_processing_destroy(asset, transaction_id):
+def single_asset_full_revaluation(asset, deleting_transaction_id=None):
     """
-    TODO: добавить уведомление, если при удалении операции получится ситуация, когда количество актива < 0
+    Полный пересчет данных для Актива (Asset) на основании всех операций (Transaction) по нему.
+    Из БД выгружаются все транзакции по данному Активу (кроме удаляемой) и на их основе формируется таблица pandas.
+    С помощью сформированной таблицы производится построчный расчет для каждой операции значений
+    'общее количество актива на дату операции' и 'общая сумма затрат на дату операции' в двух валютах (rub, usd).
+    Рассчитанные в последней операции данные являются актуальными на текущий момент и записываются в Актив.
+
+    :param asset: Актив, по которому необходимо сделать пересчет
+    :type asset: объект Asset
+
+    :param deleting_transaction_id: id транзакции, которая будет удалена (на случай, если запуск функции будет
+        из метода, который удаляет транзакцию), defaults to None.
+    :type deleting_transaction_id: int
+
+    :raises NegativeAssetQuantityError: Если значение количества Актива становится отрицательным
+    :raises TransactionTypeError: Если по Активу есть транзакция, имя (name) которой не предусмотрено при расчетах, т.е.
+        не определено в модели Transaction и не обрабатывается в этой функции
+
+    :return: None
     """
-    # print("----пришел asset в asset_processing_destroy:", asset)
-    all_transactions_of_asset = Transaction.objects.filter(asset=asset).exclude(id=transaction_id)
+    # print("----получен asset в asset_processing_destroy:", asset)
+    print("----получен deleting_transaction_id в asset_processing_destroy:", type(deleting_transaction_id))
+    all_transactions_of_asset = Transaction.objects.filter(asset=asset).exclude(id=deleting_transaction_id)
     # print("---all_transactions_of_asset:", all_transactions_of_asset)
 
     # если по данному Активу нет транзакций (после удаления текущей транзакции), то заполняем нулями данные в Активе
@@ -431,7 +471,7 @@ def asset_processing_destroy(asset, transaction_id):
         #  (нужно решить как определять такой порядок)
         sorted_df_all_transactions_of_asset = df_all_transactions_of_asset.sort_values(by="id", ascending=True)
 
-        # добавляем временные столбцы для рассчета итоговых показателей Актива
+        # добавляем временные столбцы для расчета итоговых показателей Актива
         sorted_df_all_transactions_of_asset["total_quantity_at_transact_date"] = 0.0
         sorted_df_all_transactions_of_asset["total_expenses_in_currency_at_transact_date"] = 0.0
         sorted_df_all_transactions_of_asset["total_expenses_in_rub_at_transact_date"] = 0.0
@@ -440,12 +480,12 @@ def asset_processing_destroy(asset, transaction_id):
         #  для каждой операции
         for index, transact in sorted_df_all_transactions_of_asset.iterrows():
             # print(transact)
-            print(f"START LOOP {index}")
+            # print(f"START LOOP {index}")
             previous_ind = int(str(index)) - 1  # индекс предыдущей транзакции
-            print("-----previous_ind:", previous_ind)
+            # print("-----previous_ind:", previous_ind)
 
-            # берем значение "общего количества актива на дату операции" и "общей суммы затрат на дату операции"
-            #  из предыдущей операции
+            # берем значение 'общего количества актива на дату операции' и 'общей суммы затрат на дату операции'
+            #  из предыдущей операции, если она существует
             if previous_ind >= 0:
                 previous_total_quantity_at_transact_date = \
                     sorted_df_all_transactions_of_asset.at[previous_ind, "total_quantity_at_transact_date"]
@@ -462,8 +502,9 @@ def asset_processing_destroy(asset, transaction_id):
                 previous_total_expenses_in_currency_at_transact_date = 0.0
                 previous_total_expenses_in_rub_at_transact_date = 0.0
 
-            if transact.transaction_name == "buy":
-
+            # рассчитываем показатели для операции, в случае если это операция buy
+            # (используем transact['name'], а не transact.name т.к. иначе берет Name(индекс) строки, а не транзакции
+            if transact['name'] == 'buy':
                 # преобразуем из decimal в float, для записи в DataFrame, т.к. pd не поддерживает decimal
                 total_quantity_at_transact_date = \
                     float(decimal.Decimal(previous_total_quantity_at_transact_date)
@@ -477,18 +518,22 @@ def asset_processing_destroy(asset, transaction_id):
                     float(decimal.Decimal(previous_total_expenses_in_rub_at_transact_date)
                           + transact.total_price_in_rub)
 
-            elif transact.transaction_name == "sell":
+            # рассчитываем показатели для операции, в случае если это операция sell
+            elif transact['name'] == 'sell':
                 total_quantity_at_transact_date = float(decimal.Decimal(previous_total_quantity_at_transact_date)
                                                         - transact.quantity)
 
+                # если количество актива после удаления требуемой транзакции будет отрицательным, то поднимаем ошибку
+                #  (эта проверка только в транзакциях sell, т.к. только в этих транзакциях производится вычитание из
+                #  общего количества, то есть только здесь может получиться отрицательное значение количества актива)
                 if total_quantity_at_transact_date < 0:
-                    # print("-----МЕНЬШЕ НУЛЯ:", total_quantity_at_transact_date)
                     next_transaction_date = sorted_df_all_transactions_of_asset.at[int(str(index)) + 1, 'date']
                     raise NegativeAssetQuantityError(f"Невозможно удалить операцю, т.к. в результате удаления "
                                                      f"возникает отрицательное значение количества этого актива "
                                                      f"'{total_quantity_at_transact_date}' на дату следующей операции: "
                                                      f"{next_transaction_date}")
 
+                # рассчитываем среднюю цену покупки для дальнейшего расчета суммы общих затрат
                 previous_average_price_in_currency = (previous_total_expenses_in_currency_at_transact_date
                                                       / previous_total_quantity_at_transact_date)
 
@@ -504,15 +549,16 @@ def asset_processing_destroy(asset, transaction_id):
                     float(decimal.Decimal(previous_total_expenses_in_rub_at_transact_date)
                           - (transact.quantity * decimal.Decimal(previous_average_price_in_rub)))
 
+            # если в списке будет операция, которая не обрабатывается не в одном из условий выше поднимае ошибку
             else:
                 raise TransactionTypeError(
-                    f"Некорректный вид операции - '{transact.transaction_name}' от {transact.date}")
+                    f"Некорректный вид операции - '{transact['name']}' от {transact.date}.")
 
-            # записываем полученное значение "общего количества актива на дату текущей операции" в таблицу
+            # записываем полученное значение 'общего количества актива на дату текущей операции' в таблицу
             sorted_df_all_transactions_of_asset.at[index, "total_quantity_at_transact_date"] = \
                 total_quantity_at_transact_date
 
-            # записываем полученное значение "общей суммы затрат на дату текущей операции" в таблицу
+            # записываем полученное значение 'общей суммы затрат на дату текущей операции' в таблицу
             sorted_df_all_transactions_of_asset.at[index, "total_expenses_in_currency_at_transact_date"] = \
                 total_expenses_in_currency_at_transact_date
             sorted_df_all_transactions_of_asset.at[index, "total_expenses_in_rub_at_transact_date"] = \
@@ -520,7 +566,7 @@ def asset_processing_destroy(asset, transaction_id):
 
         print("----df_all_transactions_of_asset:",
               sorted_df_all_transactions_of_asset.loc[:, ["id",
-                                                          "transaction_name",
+                                                          "name",
                                                           # "ticker",
                                                           # "asset_id",
                                                           "quantity",
@@ -537,17 +583,18 @@ def asset_processing_destroy(asset, transaction_id):
     print(sorted_df_all_transactions_of_asset.iloc[-1, 22])
     print(sorted_df_all_transactions_of_asset.iloc[-1, 23])
 
-    # перезаписываем в Активе занчение 'общее количество' на значени 'общее количество', полученное в последней операции
+    # перезаписываем в Активе занчение 'общее количество' на значени 'общее количество на дату операции', полученное
+    #  в последней операции
     asset.total_quantity = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 21])
 
-    # если 'общее количество' в Активе получилось 0, то во все необходимые значения в Активе тоже записываем 0
+    # если 'общее количество' в Активе получилось 0, то во все необходимые значения в Активе тоже указываем как 0
     if asset.total_quantity == 0:
         asset.total_expenses_in_currency = decimal.Decimal('0.0')
         asset.total_expenses_in_rub = decimal.Decimal('0.0')
         asset.average_buying_price_of_one_unit_in_currency = decimal.Decimal('0.0')
         asset.average_buying_price_of_one_unit_in_rub = decimal.Decimal('0.0')
 
-    # если 'общее количество' в Активе не 0, то все необходимые значения в Активе перезаписываем на значения,
+    # если 'общее количество' в Активе не равно 0, то все необходимые значения в Активе перезаписываем на значения,
     #  рассчитанные в последней операции
     else:
         asset.total_expenses_in_currency = decimal.Decimal(sorted_df_all_transactions_of_asset.iloc[-1, 22])
@@ -564,14 +611,16 @@ class TransactionsView(ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
-            # получаем asset или создаем, если не существет
-            asset = asset_processing_create(transaction=request)
-            print('asset_полученный в create++++++++', type(asset), asset, asset.__dict__)
-        except Asset.DoesNotExist as err:
-            # обрабатывает случай DoesNotExist, когда Актиа еще нет, но пришла операция sell
-            print("except Asset.DoesNotExist as err: ----create", err)
-            err_data = f"Ошибка: {err}"
+            # получаем Asset или создаем, если не существует
+            asset = asset_processing_when_transaction_create(transaction=request)
+            print('-----asset_полученный в create:', type(asset), asset, asset.__dict__)
+
+        # обрабатывает случай DoesNotExist, когда Актива еще нет, но пришла операция, уменьшающая его количество
+        except Asset.DoesNotExist:
+            err_data = f"Невозможно продать актив, который отсутствует"
             return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
+
+        # отлавливаем вся остальные случаи, когда не удалось создать Актив
         except Exception as err:
             err_data = f"Не удалось получить/создать Актив для транзакции."
             print(err_data, type(err))
@@ -579,6 +628,8 @@ class TransactionsView(ModelViewSet):
         # print('request.data----------', request.data)
         # print('asset_pk++++++++', asset_pk)
         # print('type-asset_pk++++++++', type(asset_pk))
+
+        # делаем копию запроса, чтоб заполнить его созданными fin_attributes перед отправкой на сериализацию
         request_data_for_serialize = request.data.copy()
 
         # print('asset.id========', asset.id)
@@ -588,7 +639,8 @@ class TransactionsView(ModelViewSet):
         # print('asset.total_price_in_currency========TYPE', type(asset.total_price_in_currency))
         # print('asset.portfolio_name========', asset.portfolio_name_id)
         # print('asset.agent_id========', asset.agent_id)
-        # добавялем данные объекта (который создали/получили из БД) вместо имени(str), которое было в запросе
+
+        # добавляем данные объекта (который создан/получен из БД) вместо значения str, которое было в запросе
         request_data_for_serialize['asset'] = asset.id
         request_data_for_serialize['portfolio_name'] = asset.portfolio_name_id
         request_data_for_serialize['agent'] = asset.agent_id
@@ -608,25 +660,33 @@ class TransactionsView(ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
 
-        # TODO: если ничего не потребуется длеать после удаления операции, тогда можно перенести этот функционал в
-        #  perform_destroy, то есть переопределить не destroy, а perform_destroy
+        # TODO: если ничего не потребуется длеать после удаления операции или с request, тогда можно перенести этот
+        #  функционал в perform_destroy, то есть переопределить не destroy, а perform_destroy
         instance_asset = instance.asset
         try:
-            asset_processing_destroy(asset=instance_asset, transaction_id=instance.id)
+            # пересчет данных актива на основании анализа всех операций по нему
+            single_asset_full_revaluation(asset=instance_asset, deleting_transaction_id=instance.id)
+
+        # обрабатывается случай, когда количество актива получается отрицательным
         except NegativeAssetQuantityError as err:
             err_data = err.args
             print(err_data, type(err), err)
             return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
+
+        # обрабатывается случай, когда по Активу есть транзакция с ошибочным именем (name), т.е. не предусмотренным
+        #  в модели Transaction
         except TransactionTypeError as err:
             err_data = err.args
             print(err_data, type(err), err)
             return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
+
+        # отлавливаются остальные случаи, когда не удалось пересчитать данные для Актива
         except Exception as err:
             err_data = f"Не удалось пересчитать показатели Актива. Транзакция не удалена."
             print(err_data, type(err), err)
             return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
 
-        # print("---ОПЕРАЦИЯ БУДЕТ УДАЛЕНА в perform_destroy")
+        print("---ОПЕРАЦИЯ БУДЕТ УДАЛЕНА в perform_destroy")
         self.perform_destroy(instance)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
