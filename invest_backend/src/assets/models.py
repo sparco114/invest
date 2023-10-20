@@ -1,3 +1,5 @@
+import decimal
+
 from django.db import models
 from decimal import Decimal
 
@@ -7,7 +9,7 @@ from src.fin_attributes.models import Portfolio, Agent, StockMarket, AssetClass,
 # TODO: подумать есть ли смысл брать курс прямо на текущий момент, если стоимости акций будут взяты из таблицы,
 #   то есть их стоимости будут на какой-то другой момент. Или  лучше курс тоже записывать в ту же таблицу,
 #   и обновлять одновременно и курс, и стоимости акций.
-def take_current_currency_rate_to_rub():
+def take_current_currency_rate_to_rub() -> float:
     """
     TODO: написать функционал
     Обращается к стороннему апи, чтобы получить курс рубля к валюте (а так же в этот
@@ -16,7 +18,7 @@ def take_current_currency_rate_to_rub():
     :return: текущий курс рубля к валюте
     """
     print('СРАБОТАЛ --- take_current_currency_rate_to_rub')
-    return 4
+    return 4.0
 
 
 class Asset(models.Model):
