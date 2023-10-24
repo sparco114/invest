@@ -28,7 +28,12 @@ class Asset(models.Model):
     portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)
     agent = models.ForeignKey(Agent, on_delete=models.PROTECT)  # посредник
     stock_market = models.ForeignKey(StockMarket, on_delete=models.PROTECT)
+
     asset_class = models.ForeignKey(AssetClass, on_delete=models.PROTECT)
+    # TODO: !! подумать как сделать: ограниченным списком и с возможностью добавления кастомного, тогда как
+    #  будет считаться кастомный? Если без ограничений, то как будут считаться разные классы, цена которых
+    #  не подтягивается ни с одного api
+
     asset_type = models.ForeignKey(AssetType, on_delete=models.SET_NULL, blank=True, null=True)
     currency_of_price = models.ForeignKey(Currency,
                                           on_delete=models.PROTECT,

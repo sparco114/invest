@@ -13,6 +13,21 @@ typing-extensions = {version = ">=4", markers = "python_version < \"3.11\""}
 tests = ["pytest", "pytest-asyncio", "mypy (>=0.800)"]
 
 [[package]]
+name = "beautifulsoup4"
+version = "4.12.2"
+description = "Screen-scraping library"
+category = "main"
+optional = false
+python-versions = ">=3.6.0"
+
+[package.dependencies]
+soupsieve = ">1.2"
+
+[package.extras]
+html5lib = ["html5lib"]
+lxml = ["lxml"]
+
+[[package]]
 name = "certifi"
 version = "2023.7.22"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -162,6 +177,20 @@ description = "Internationalized Domain Names in Applications (IDNA)"
 category = "main"
 optional = false
 python-versions = ">=3.5"
+
+[[package]]
+name = "lxml"
+version = "4.9.3"
+description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, != 3.4.*"
+
+[package.extras]
+cssselect = ["cssselect (>=0.7)"]
+html5 = ["html5lib"]
+htmlsoup = ["beautifulsoup4"]
+source = ["Cython (>=0.29.35)"]
 
 [[package]]
 name = "numpy"
@@ -364,6 +393,14 @@ openidconnect = ["python-jose (>=3.0.0)"]
 saml = ["python3-saml (>=1.5.0)"]
 
 [[package]]
+name = "soupsieve"
+version = "2.5"
+description = "A modern CSS selector implementation for Beautiful Soup."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
 name = "sqlparse"
 version = "0.4.4"
 description = "A non-validating SQL parser."
@@ -409,10 +446,11 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "3.10"
-content-hash = "c25a6f2517535ee326d28d275ca48ba3808556fd01466f927f10b41322e28485"
+content-hash = "fa8664808cf1c7d3af859c486ffe150f43b54db7999c19b9b7ea211a4998d797"
 
 [metadata.files]
 asgiref = []
+beautifulsoup4 = []
 certifi = []
 cffi = []
 charset-normalizer = []
@@ -425,6 +463,7 @@ djangorestframework = []
 djangorestframework-simplejwt = []
 djoser = []
 idna = []
+lxml = []
 numpy = []
 oauthlib = []
 pandas = []
@@ -439,6 +478,7 @@ requests-oauthlib = []
 six = []
 social-auth-app-django = []
 social-auth-core = []
+soupsieve = []
 sqlparse = []
 typing-extensions = []
 tzdata = []
