@@ -9,3 +9,4 @@ class AssetsView(ModelViewSet):
     serializer_class = AssetsSerializer
     queryset = Asset.objects.all()
 
+# class AssetsRefreshPricesView()
