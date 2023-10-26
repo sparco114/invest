@@ -6,6 +6,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from src.assets.models import Asset
 from src.fin_attributes.models import Portfolio, Agent, StockMarket, AssetClass, AssetType, Currency, Region
+from src.services.take_exchange_rates import take_current_exchange_rate_to_rub_from_api
 from src.transactions.models import Transaction
 from src.transactions.serializer import TransactionsSerializer
 from src.services.take_prices.take_prices import take_price
@@ -55,17 +56,6 @@ def processing_asset_when_transaction_create(transaction):
     # return
     # print('portfolio_name_____________', portfolio_name)
     # print('portfolio_name_____________тип', type(portfolio_name))
-
-    # def take_price() -> float:
-    #     """
-    #     TODO: написать функционал, возможно необходимо вынести эту функцию из asset_processing_create
-    #     Обращается к стороннему апи, чтобы получить стоимость актива (а так же в этот
-    #     момент добавляться в таблицу, в которой будут храниться данные о ценах на все купленные активы.
-    #     Эти таблицы будут обновляться с API по кнопке)
-    #     :return: текущая цена актива
-    #     """
-    #     print('СРАБОТАЛ----take_price')
-    #     return 300.0
 
     # проверяем по данным из полученной в запросе транзакции существует ли Актив с такими данными
     try:
@@ -143,12 +133,17 @@ def processing_asset_when_transaction_create(transaction):
                                                  f"({transaction_quantity} единиц), т.к. в наличии "
                                                  f"только {asset_total_quantity_old_value}")
 
+        # обновляем текущую стоимость актива, получая со стороннего API
+        asset.one_unit_current_price_in_currency = take_price(ticker=asset.ticker,
+                                                              stock_market=asset.stock_market.name,
+                                                              asset_class=asset.asset_class.name,
+                                                              currency=asset.currency_of_price.name)
         asset.save()
         return asset  # возвращаем Актив с обновленными данными
 
     # Создание нового Актива, если он не найден, а текущая транзакция увеличивает или не изменяет его количество
     if need_to_create_asset:
-        # print('сработал need_to_create_asset----')
+        print('сработал need_to_create_asset----')
 
         # если в операции заполнено поле Портфель (иначе останется None)
         if transaction_portfolio_name:
@@ -170,20 +165,48 @@ def processing_asset_when_transaction_create(transaction):
             transaction_asset_type, asset_type_created = AssetType.objects.get_or_create(name=transaction_asset_type)
             # print('asset_type----', transaction_asset_type)
 
+        # получаем текущий курс валюты
+        current_exchange_rate_to_rub_for_currency_price = \
+            take_current_exchange_rate_to_rub_from_api(transaction_currency_of_price)
+        print("---получили current_exchange_rate_to_rub_for_currency_price", current_exchange_rate_to_rub_for_currency_price)
+
         # если валюта цены и валюта покупки одинаковая - то создаем валюту в БД один раз
         if transaction_currency_of_price == transaction_currency_of_asset:
             transaction_currency_of_price, currency_of_price_created = Currency.objects.get_or_create(
-                name=transaction_currency_of_price)
+                name=transaction_currency_of_price,
+                defaults={'rate_to_rub': current_exchange_rate_to_rub_for_currency_price})
+            # если валюта найдена(get), а не создана(create), то обновляем в ней текущий курс к рублю
+            if currency_of_price_created:
+                print("---сработало создание валюты CREATE", transaction_currency_of_price.rate_to_rub)
+            if not currency_of_price_created:
+                transaction_currency_of_price.rate_to_rub = current_exchange_rate_to_rub_for_currency_price
+                transaction_currency_of_price.save()
+                print("---валюта найдена GET", transaction_currency_of_price.rate_to_rub)
             # print('currency_of_price----', transaction_currency_of_price)
             transaction_currency_of_asset = transaction_currency_of_price
 
         # если валюта цены и валюта покупки различается - то создаем в БД каждую по отдельности
         else:
             transaction_currency_of_price, currency_of_price_created = Currency.objects.get_or_create(
-                name=transaction_currency_of_price)
+                name=transaction_currency_of_price,
+                defaults={'rate_to_rub': current_exchange_rate_to_rub_for_currency_price})
+
+            # если валюта найдена(get), а не создана(create), то обновляем в ней текущий курс к рублю,
+            #  при этом для валюты актива (ниже) курс можно не обновлять
+            if not currency_of_price_created:
+                transaction_currency_of_price.rate_to_rub = current_exchange_rate_to_rub_for_currency_price
+                transaction_currency_of_price.save()
             # print('currency_of_price----', transaction_currency_of_price)
+
+            # если валюта актива будет создаваться, то требуется определить для нее текущий курс
+            current_exchange_rate_to_rub_for_currency_asset = \
+                take_current_exchange_rate_to_rub_from_api(transaction_currency_of_asset)
+            print("---получили current_exchange_rate_to_rub_for_currency_asset",
+                  current_exchange_rate_to_rub_for_currency_asset)
+
             transaction_currency_of_asset, currency_of_asset_created = Currency.objects.get_or_create(
-                name=transaction_currency_of_asset)
+                name=transaction_currency_of_asset,
+                defaults={'rate_to_rub': current_exchange_rate_to_rub_for_currency_asset})
             # print('currency_of_asset----', transaction_currency_of_asset)
 
         # если в операции заполнено поле Регион (иначе останется None)
@@ -207,6 +230,8 @@ def processing_asset_when_transaction_create(transaction):
             region=transaction_region,
             currency_of_asset=transaction_currency_of_asset,
             total_quantity=transaction_quantity,
+
+            # текущую стоимость актива получаем со стороннего API
             one_unit_current_price_in_currency=take_price(ticker=transaction_ticker,
                                                           stock_market=transaction_stock_market.name,
                                                           asset_class=transaction_asset_class.name,
@@ -256,8 +281,9 @@ def full_revaluation_single_asset(asset, deleting_transaction_id=None):
     :return: None
     """
     # print("----получен asset в asset_processing_destroy:", asset)
-    print("----получен deleting_transaction_id в asset_processing_destroy:", type(deleting_transaction_id))
-    all_transactions_of_asset = Transaction.objects.filter(asset=asset).exclude(id=deleting_transaction_id)
+    # print("----получен deleting_transaction_id в asset_processing_destroy:", type(deleting_transaction_id))
+    all_transactions_of_asset = Transaction.objects.filter(asset=asset).exclude(
+        id=deleting_transaction_id)
     # print("---all_transactions_of_asset:", all_transactions_of_asset)
 
     # если по данному Активу нет транзакций (после удаления текущей транзакции), то заполняем нулями данные в Активе
@@ -287,7 +313,7 @@ def full_revaluation_single_asset(asset, deleting_transaction_id=None):
         #  для каждой операции
         for index, transact in sorted_df_all_transactions_of_asset.iterrows():
             # print(transact)
-            print(f"START LOOP {index}")
+            # print(f"START LOOP {index}")
             previous_ind = int(str(index)) - 1  # индекс предыдущей транзакции
             # print("-----previous_ind:", previous_ind)
 
@@ -421,7 +447,7 @@ class TransactionsView(ModelViewSet):
         try:
             # получаем Asset или создаем, если не существует
             asset = processing_asset_when_transaction_create(transaction=request)
-            print('-----asset_полученный в create:', type(asset), asset, asset.__dict__)
+            # print('-----asset_полученный в create:', type(asset), asset, asset.__dict__)
 
         # обрабатывается случай, когда количество Актива 0, но пришла транзакция, уменьшающая его количество
         except NegativeAssetQuantityError as err:
@@ -467,7 +493,7 @@ class TransactionsView(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        print('serializer.data----', serializer.data)
+        # print('serializer.data----', serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def destroy(self, request, *args, **kwargs):

@@ -38,6 +38,7 @@ class AssetType(models.Model):
 
 class Currency(models.Model):
     name = models.CharField(max_length=10, unique=True)
+    rate_to_rub = models.DecimalField(max_digits=7, decimal_places=5)
 
     def __str__(self):
         return f"id: {self.pk} - '{self.name}'"
