@@ -14,11 +14,11 @@ from src.services.take_prices.take_prices import take_price
 
 def processing_asset_when_transaction_create(transaction):
     """
-    Поиск актива (Asset) для создаваемой транзакции (Transaction), и обновление в нем данных, на основании
-    этой транзакции. Если Актив не найден - создание такого Актива и заполнение данными из транзакции, которые
+    Поиск актива (Asset) для создаваемой транзакции (Transaction), и обновление в нем данных, на основании этой
+    транзакции. Если Актив не найден - создание такого Актива и заполнение данными из транзакции, которые
     получены в post запросе.
-    !!! При Создании актива срабатывает take_price(), и записывает текущую стоимость актива, полученную
-    со сторонних ресурсов.
+    Так же при создании/получении Актива срабатывает take_price(), и записывает текущую стоимость
+    единицы Актива, полученную со сторонних ресурсов.
 
     :param transaction: Полученный post запрос с данными, которые необходимы для создания новой транзакции
     :type transaction: rest_framework.request.Request
@@ -258,7 +258,7 @@ class TransactionTypeError(Exception):
         self.err_msg = err_msg
 
 
-def full_revaluation_single_asset(asset, deleting_transaction_id=None):
+def full_recalculation_single_asset(asset, deleting_transaction_id=None):
     """
     # TODO: - в целях практики можно будет переписать эту функцию на классы
     Полный пересчет данных для Актива (Asset) на основании всех операций (Transaction) по нему.
@@ -504,7 +504,7 @@ class TransactionsView(ModelViewSet):
         instance_asset = instance.asset
         try:
             # пересчет данных актива на основании анализа всех операций по нему
-            full_revaluation_single_asset(asset=instance_asset, deleting_transaction_id=instance.id)
+            full_recalculation_single_asset(asset=instance_asset, deleting_transaction_id=instance.id)
 
         # обрабатывается случай, когда в результате удаления транзакции количество Актива получается отрицательным
         except NegativeAssetQuantityError as err:
@@ -530,3 +530,4 @@ class TransactionsView(ModelViewSet):
         print("---ОПЕРАЦИЯ УДАЛЕНА в perform_destroy")
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+

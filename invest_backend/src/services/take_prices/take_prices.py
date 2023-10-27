@@ -2,10 +2,10 @@ from src.services.take_prices._moex import take_price_moex
 from src.services.take_prices._yahoo import take_price_yahoo
 from src.services.take_prices._cryptocompare import take_price_cryptocompare
 
-ticker = "SBER"
-stock_market = ""
-asset_class = "Акции"
-currency = "USD"
+# ticker = "SBER"
+# stock_market = ""
+# asset_class = "Акции"
+# currency = "USD"
 
 
 def take_price(ticker: str, stock_market: str, asset_class: str, currency: str) -> str:

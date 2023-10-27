@@ -43,8 +43,8 @@ def take_price_moex(ticker: str, asset_class: str) -> str:
     #  Если в дальнейшем буду получать сразу списком цен по всем акциям, то можно использовать
     #  эту ссылку "https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQCB/securities.xml
     #  ?iss.meta=off&iss.only=securities,marketdata"
-    # TODO: !! берет цену как изи-инвест, но не соответствует цене брокера, поискать путь к той цене,
-    #  которую берет брокер
+    # TODO: !!! берет цену как изи-инвест, но не соответствует цене брокера, можно поискать путь к
+    #  той цене, которую берет брокер
     url_take_price = f"https://iss.moex.com/iss/engines/stock/markets/{asset}/securities/" \
                      f"{ticker}.xml?iss.meta=off&iss.only=securities,marketdata"
     print(url_take_price)

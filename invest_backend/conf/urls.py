@@ -17,16 +17,23 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from src.assets.views import AssetsView
+from src.assets.views import AssetsView, OneAssetPriceUpdateView
 from src.transactions.views import TransactionsView
 
 router = SimpleRouter()
 
 router.register(r'api/v1/assets', AssetsView)
 router.register(r'api/v1/transactions', TransactionsView)
+router.register(r'api/v1/update_assets_prices', OneAssetPriceUpdateView, basename="one_asset_price_update")
+
+# router.register(r'api/v1/assets/update_prices', AssetsUpdatePricesView, basename="sss")
+# router.register(r'api/v1/assets/recalculation', )
+# router.register(r'api/v1/assets/update_data', )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # path('api/v1/update_assets_prices/<int:pk>/', OneAssetPriceUpdateView.as_view({'get': 'retrieve'})),
+
     # path('api/v1/', include('src.api_urls')),
     path('api/v1/djoser_auth/', include('djoser.urls')),
     path('api/v1/djoser_token/', include('djoser.urls.authtoken')),
