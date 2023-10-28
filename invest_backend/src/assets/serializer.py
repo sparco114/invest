@@ -18,7 +18,7 @@ class AssetsSerializer(ModelSerializer):
         # fields = ['total_price_in_currency']
 
 
-class AllAssetsPricesUpdateSerializer(Serializer):
+class PricesAndRatesUpdateSerializer(Serializer):
     id = IntegerField()
     one_unit_current_price_in_currency = CharField()
-    error = CharField()
+    # error = CharField()
