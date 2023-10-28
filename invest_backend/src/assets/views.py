@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 from src.assets.models import Asset
-from src.assets.serializer import AssetsSerializer
+from src.assets.serializer import AssetsSerializer, AllAssetsPricesUpdateSerializer
 from src.services.take_prices.take_prices import take_price
 
 
@@ -19,28 +19,102 @@ class AssetsView(ModelViewSet):
     queryset = Asset.objects.all()
 
 
-class OneAssetPriceUpdateView(mixins.ListModelMixin, GenericViewSet):
-    serializer_class = AssetsSerializer
+class AllAssetsPricesUpdateView(mixins.ListModelMixin, GenericViewSet):
+    serializer_class = AllAssetsPricesUpdateSerializer
+    queryset = Asset.objects.values('id',
+                                    'ticker',
+                                    'stock_market__name',
+                                    'asset_class__name',
+                                    'currency_of_price__name',
+                                    'one_unit_current_price_in_currency')
 
-    def get_object(self):
-        pk = self.kwargs['pk']
-        try:
-            return Asset.objects.get(pk=pk)
-        except Asset.DoesNotExist:
-            raise NotFound(f"Актив с id '{pk}' не найден")
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
+        new_prices = []
+        for asset in queryset:
+            print(asset.get('id'))
+            print(asset.get('ticker'))
+            print(asset.get('stock_market__name'))
+            print(asset.get('asset_class__name'))
+            print(asset.get('currency_of_price__name'))
+            try:
+                new_price = take_price(ticker=asset.get('ticker'),
+                                       stock_market=asset.get('stock_market__name'),
+                                       asset_class=asset.get('asset_class__name'),
+                                       currency=asset.get('currency_of_price__name'))
+                new_prices.append({'id': asset['id'],
+                                   'one_unit_current_price_in_currency': new_price,
+                                   'error': None})
 
-        new_price = take_price(ticker=instance.ticker,
-                               stock_market=instance.stock_market.name,
-                               asset_class=instance.asset_class.name,
-                               currency=instance.currency_of_price.name)
+            except Exception as err:
+                err_msg = f"Не удалось обновить цену актива '{asset['ticker']}' - id: '{asset['id']}'. " \
+                          f"Ошибка: {err}"
+                new_prices.append({'id': asset['id'],
+                                   'one_unit_current_price_in_currency':
+                                       asset['one_unit_current_price_in_currency'],
+                                   'error': err_msg})
 
-        instance.one_unit_current_price_in_currency = new_price
-        instance.save()
+                # TODO: !! выводить пользователю на сайт
 
-        serializer = self.get_serializer(instance)
+        print('---new_prices:', new_prices)
+
+
+
+        page = self.paginate_queryset(new_prices)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(new_prices, many=True)
         return Response(serializer.data)
 
-# class AllAssetsRefreshPricesView()
+
+
+
+
+    #         new_price = take_price(ticker=instance.ticker,
+    #                                stock_market=instance.stock_market.name,
+    #                                asset_class=instance.asset_class.name,
+    #                                currency=instance.currency_of_price.name)
+
+
+
+    # def list(self, request, *args, **kwargs):
+    #     queryset = self.filter_queryset(self.get_queryset())
+    #
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
+    #
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response(serializer.data)
+
+
+
+
+# class OneAssetPriceUpdateView(mixins.RetrieveModelMixin, GenericViewSet):
+#     serializer_class = AssetsSerializer
+#
+#     def get_object(self):
+#         pk = self.kwargs['pk']
+#         try:
+#             return Asset.objects.get(pk=pk)
+#         except Asset.DoesNotExist:
+#             raise NotFound(f"Актив с id '{pk}' не найден")
+#
+#     def retrieve(self, request, *args, **kwargs):
+#         instance = self.get_object()
+#
+#         new_price = take_price(ticker=instance.ticker,
+#                                stock_market=instance.stock_market.name,
+#                                asset_class=instance.asset_class.name,
+#                                currency=instance.currency_of_price.name)
+#
+#         instance.one_unit_current_price_in_currency = new_price
+#         instance.save()
+#
+#         serializer = self.get_serializer(instance)
+#         return Response(serializer.data)
+

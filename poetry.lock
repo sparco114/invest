@@ -112,6 +112,18 @@ python-versions = ">=3.8"
 Django = ">=3.2"
 
 [[package]]
+name = "django-debug-toolbar"
+version = "4.2.0"
+description = "A configurable set of panels that display various debug information about the current request/response."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+django = ">=3.2.4"
+sqlparse = ">=0.2"
+
+[[package]]
 name = "django-templated-mail"
 version = "1.1.1"
 description = "Send emails using Django template system."
@@ -446,7 +458,7 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "3.10"
-content-hash = "fa8664808cf1c7d3af859c486ffe150f43b54db7999c19b9b7ea211a4998d797"
+content-hash = "0d732b557950510634180538a07556cf6ff017f143c2ea6fb58f4c8b9ff3284b"
 
 [metadata.files]
 asgiref = []
@@ -458,6 +470,7 @@ cryptography = []
 defusedxml = []
 django = []
 django-cors-headers = []
+django-debug-toolbar = []
 django-templated-mail = []
 djangorestframework = []
 djangorestframework-simplejwt = []

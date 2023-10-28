@@ -17,14 +17,16 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from src.assets.views import AssetsView, OneAssetPriceUpdateView
+from src.assets.views import AssetsView, AllAssetsPricesUpdateView
 from src.transactions.views import TransactionsView
 
 router = SimpleRouter()
 
 router.register(r'api/v1/assets', AssetsView)
 router.register(r'api/v1/transactions', TransactionsView)
-router.register(r'api/v1/update_assets_prices', OneAssetPriceUpdateView, basename="one_asset_price_update")
+# router.register(r'api/v1/update_one_asset_price', OneAssetPriceUpdateView, basename="one_asset_price_update")
+router.register(r'api/v1/update_all_assets_prices', AllAssetsPricesUpdateView,
+                basename="all_asset_price_update")
 
 # router.register(r'api/v1/assets/update_prices', AssetsUpdatePricesView, basename="sss")
 # router.register(r'api/v1/assets/recalculation', )
@@ -32,6 +34,7 @@ router.register(r'api/v1/update_assets_prices', OneAssetPriceUpdateView, basenam
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("__debug__/", include("debug_toolbar.urls")),
     # path('api/v1/update_assets_prices/<int:pk>/', OneAssetPriceUpdateView.as_view({'get': 'retrieve'})),
 
     # path('api/v1/', include('src.api_urls')),
