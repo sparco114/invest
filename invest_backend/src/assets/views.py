@@ -1,19 +1,11 @@
-import json
-
-import requests
-from django.shortcuts import render
 from rest_framework import mixins, status
-from rest_framework.decorators import api_view
-from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 from src.assets.models import Asset
 from src.assets.serializer import AssetsSerializer, PricesAndRatesUpdateSerializer
-from src.fin_attributes.models import Currency
 from src.services.take_exchange_rates import all_currencies_rates_update
-from src.services.take_prices.take_prices import take_price
+from src.services.take_prices.take_prices import all_assets_prices_update
 
 
 class AssetsView(ModelViewSet):
@@ -21,12 +13,16 @@ class AssetsView(ModelViewSet):
     queryset = Asset.objects.all()
 
 
-class PricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
+class AllPricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
     serializer_class = PricesAndRatesUpdateSerializer
 
     def list(self, request, *args, **kwargs):
 
-        errors_rate_update = all_currencies_rates_update()
+        errors_rates_update = all_currencies_rates_update()
+        # errors_rates_update = None
+
+        errors_prices_update = all_assets_prices_update()
+        # errors_prices_update = None
 
         queryset = Asset.objects.values('id', 'one_unit_current_price_in_currency')
 
@@ -38,13 +34,14 @@ class PricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
         serializer = self.get_serializer(queryset, many=True)
 
         response_data = {'rates': serializer.data}
-        if errors_rate_update:
-            response_data['errors'] = errors_rate_update
+
+        if errors_rates_update:
+            response_data['errors_rates_update'] = errors_rates_update
+
+        if errors_prices_update:
+            response_data['errors_prices_update'] = errors_prices_update
 
         return Response(data=response_data)
-
-
-
 
 # class PricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
 #     serializer_class = AllAssetsPricesUpdateSerializer
@@ -88,18 +85,6 @@ class PricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
 #         # print('---new_prices:', new_prices)
 #
 #
-#
-#         page = self.paginate_queryset(new_prices)
-#         if page is not None:
-#             serializer = self.get_serializer(page, many=True)
-#             return self.get_paginated_response(serializer.data)
-#
-#         serializer = self.get_serializer(new_prices, many=True)
-#         return Response(serializer.data)
-
-
-
-
 
 
 # class OneAssetPriceUpdateView(mixins.RetrieveModelMixin, GenericViewSet):
@@ -125,4 +110,3 @@ class PricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
 #
 #         serializer = self.get_serializer(instance)
 #         return Response(serializer.data)
-

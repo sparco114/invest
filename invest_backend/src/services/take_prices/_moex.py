@@ -47,7 +47,7 @@ def take_price_moex(ticker: str, asset_class: str) -> str:
     #  той цене, которую берет брокер
     url_take_price = f"https://iss.moex.com/iss/engines/stock/markets/{asset}/securities/" \
                      f"{ticker}.xml?iss.meta=off&iss.only=securities,marketdata"
-    print(url_take_price)
+    # print(url_take_price)
     try:
         req = requests.get(url_take_price)
         bs_req = BeautifulSoup(markup=req.content, features="xml")
@@ -61,8 +61,11 @@ def take_price_moex(ticker: str, asset_class: str) -> str:
         # print(last_price)
         # print(prev_price)
         # print(securities.get("SHORTNAME"))
-        print(securities.get("SECNAME"))
-        print(price)
+        # print(securities.get("SECNAME"))
+        print("---price in 'take_price_moex':", price)
+        # print(price)
+        if not price:
+            raise ValueError()
         return price
     except Exception as moex_err:
         moex_err.args += (f"Адрес запроса для получения Цены и Наименования: '{url_take_price}'",)

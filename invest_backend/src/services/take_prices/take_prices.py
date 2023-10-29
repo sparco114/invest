@@ -1,6 +1,10 @@
+from django.db import transaction
+
+from src.assets.models import Asset
 from src.services.take_prices._moex import take_price_moex
 from src.services.take_prices._yahoo import take_price_yahoo
 from src.services.take_prices._cryptocompare import take_price_cryptocompare
+
 
 # ticker = "SBER"
 # stock_market = ""
@@ -44,3 +48,37 @@ def take_price(ticker: str, stock_market: str, asset_class: str, currency: str) 
 #     print("--res:", res)
 # except Exception as err:
 #     print(err)
+
+def all_assets_prices_update() -> list:
+    all_assets = Asset.objects.select_related('stock_market',
+                                              'asset_class',
+                                              'currency_of_price'
+                                              ).only('id',
+                                                     'ticker',
+                                                     'stock_market__name',
+                                                     'asset_class__name',
+                                                     'currency_of_price__name',
+                                                     'one_unit_current_price_in_currency')
+
+    new_prices = []
+    errors_take_prices = []
+    for asset in all_assets:
+        # print('---asset:', asset.currency_of_price.name)
+        try:
+            new_price = take_price(ticker=asset.ticker,
+                                   stock_market=asset.stock_market.name,
+                                   asset_class=asset.asset_class.name,
+                                   currency=asset.currency_of_price.name)
+            print('--данные получены из new_price:', new_price)
+            asset.one_unit_current_price_in_currency = new_price
+            new_prices.append(asset)
+        except Exception as err:
+            err_msg = f"Не удалось обновить цену '{asset.ticker}' - id: {asset.id}. Ошибка: {err}"
+            errors_take_prices.append({'id': asset.id, 'name': asset.ticker, 'error': err_msg})
+
+    if new_prices:
+        with transaction.atomic():
+            print("---запускается bulk_update для цен")
+            Asset.objects.bulk_update(new_prices, ['one_unit_current_price_in_currency'])
+
+    return errors_take_prices

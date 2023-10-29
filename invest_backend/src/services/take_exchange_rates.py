@@ -20,7 +20,8 @@ def take_current_exchange_rate_to_rub_from_api(currency: str) -> str:
     bs_req_rate = BeautifulSoup(markup=req_rate.content, features="xml")
     rate = bs_req_rate.find("row")['rate']
     if not rate:
-        raise ValueError('ddfgsdgadfgadfgadsfgadfgadfgadfg')
+        raise ValueError(f"Ошибка, не удалось получить курс для '{currency}'. "
+                         f"Адрес запроса - '{url_rate_to_rub}'")
     print(rate)
     return rate
 
@@ -41,7 +42,7 @@ def take_current_exchange_rate_to_rub_from_db(currency: str) -> str:
     return str(rate)
 
 
-def all_currencies_rates_update():
+def all_currencies_rates_update() -> list:
     all_currencies = Currency.objects.all()
     updated_currencies = []
     errors_take_rates = []
@@ -60,7 +61,7 @@ def all_currencies_rates_update():
 
     if updated_currencies:
         with transaction.atomic():
-            print("---запускается bulk_update")
+            print("---запускается bulk_update для курсов")
             Currency.objects.bulk_update(objs=updated_currencies, fields=['rate_to_rub'])
 
     return errors_take_rates
