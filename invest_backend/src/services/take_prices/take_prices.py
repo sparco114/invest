@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from src.assets.models import Asset
+from src.services.take_prices._google import take_price_google
 from src.services.take_prices._moex import take_price_moex
 from src.services.take_prices._yahoo import take_price_yahoo
 from src.services.take_prices._cryptocompare import take_price_cryptocompare
@@ -35,12 +36,29 @@ def take_price(ticker: str, stock_market: str, asset_class: str, currency: str) 
         return "1.0"
 
     else:
+        parsing_errors = []
         try:
-            return take_price_yahoo(ticker=ticker)
+            new_price = take_price_yahoo(ticker=ticker, stock_market=stock_market)
+            if new_price:
+                return new_price
+
         except Exception as yahoo_err:
-            err_data = f"Возможно не верно указан Биржа. Ошибка при получении данных с yahoo.com для актива " \
-                       f"'{ticker}': {type(yahoo_err)} - {yahoo_err}"
+            err_data = f"Возможно не верно указан Биржа. Ошибка при получении данных с yahoo.com " \
+                       f"для актива '{ticker}': {type(yahoo_err)} - {yahoo_err}"
             print(err_data)
+            parsing_errors.append(err_data)
+
+
+        try:
+            new_price = take_price_google(ticker=ticker, stock_market=stock_market)
+            if new_price:
+                return new_price
+        except Exception as google_err:
+            err_data = f"Возможно не верно указан Биржа. Ошибка при получении данных с google.com " \
+                       f"для актива '{ticker}': {type(google_err)} - {google_err}"
+            print(err_data)
+            parsing_errors.append(err_data)
+        raise ValueError(parsing_errors)
 
 
 # try:

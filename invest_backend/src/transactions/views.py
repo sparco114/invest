@@ -460,7 +460,7 @@ class TransactionsView(ModelViewSet):
 
         # отлавливаем вся остальные случаи, когда не удалось создать Актив
         except Exception as err:
-            err_data = f"Не удалось получить/создать Актив для транзакции."
+            err_data = f"Не удалось получить/создать Актив для транзакции. Ошибка: {err}"
             print(err_data, type(err), err)
             return Response(data=err_data, status=status.HTTP_400_BAD_REQUEST)
         # print('request.data----------', request.data)
