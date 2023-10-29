@@ -11,7 +11,7 @@ class Transaction(models.Model):
         # TODO: для валюты нужны дополнительно операции 'Пополнение', 'Снятие/Расход'
     ]
 
-    date = models.DateField()
+    date = models.DateTimeField()
     name = models.CharField(max_length=20, choices=TRANSACTION_NAMES)
     ticker = models.CharField(max_length=5)
     asset = models.ForeignKey(Asset, max_length=5, on_delete=models.CASCADE, related_name='transactions')

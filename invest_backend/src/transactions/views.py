@@ -300,9 +300,8 @@ def full_recalculation_single_asset(asset, deleting_transaction_id=None):
     #   на основе оставшихся транзакций (после удаления текущей транзакции)
     else:
         df_all_transactions_of_asset = pd.DataFrame(all_transactions_of_asset.values())
-        # TODO: !! сейчас сортировка по id, но нужно сортировать по порядку, в котором операции совершались
-        #  (нужно решить как определять такой порядок)
-        sorted_df_all_transactions_of_asset = df_all_transactions_of_asset.sort_values(by="id", ascending=True)
+        sorted_df_all_transactions_of_asset = df_all_transactions_of_asset.sort_values(by="date",
+                                                                                       ascending=True)
 
         # добавляем временные столбцы для расчета итоговых показателей Актива
         sorted_df_all_transactions_of_asset["total_quantity_at_transact_date"] = 0.0

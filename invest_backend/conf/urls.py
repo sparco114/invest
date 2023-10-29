@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from src.assets.views import AssetsView, AllPricesAndRatesUpdateView
+from src.assets.views import AssetsView, UpdateAllPricesAndRatesView, RecalculateAllAssetsDataView
 from src.transactions.views import TransactionsView
 
 router = SimpleRouter()
@@ -25,8 +25,10 @@ router = SimpleRouter()
 router.register(r'api/v1/assets', AssetsView)
 router.register(r'api/v1/transactions', TransactionsView)
 # router.register(r'api/v1/update_one_asset_price', OneAssetPriceUpdateView, basename="one_asset_price_update")
-router.register(r'api/v1/update_all_assets_prices', AllPricesAndRatesUpdateView,
-                basename="all_asset_price_update")
+router.register(r'api/v1/update_all_prices_and_rates', UpdateAllPricesAndRatesView,
+                basename="update_all_prices_and_rates")
+router.register(r'api/v1/recalculate_all_assets_data', RecalculateAllAssetsDataView,
+                basename="recalculate_all_assets_data")
 
 # router.register(r'api/v1/assets/update_prices', AssetsUpdatePricesView, basename="sss")
 # router.register(r'api/v1/assets/recalculation', )
@@ -36,6 +38,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("__debug__/", include("debug_toolbar.urls")),
     # path('api/v1/update_all_assets_prices/', PricesAndRatesUpdateView.as_view()),
+    # path('api/v1/recalculate_all_assets_data/', RecalculateAllAssetsDataView.as_view({'get': 'list'})),
     # path('api/v1/update_assets_prices/<int:pk>/', OneAssetPriceUpdateView.as_view({'get': 'retrieve'})),
 
     # path('api/v1/', include('src.api_urls')),

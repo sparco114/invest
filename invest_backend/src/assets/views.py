@@ -6,6 +6,7 @@ from src.assets.models import Asset
 from src.assets.serializer import AssetsSerializer, PricesAndRatesUpdateSerializer
 from src.services.take_exchange_rates import all_currencies_rates_update
 from src.services.take_prices.take_prices import all_assets_prices_update
+from src.transactions.views import full_recalculation_single_asset
 
 
 class AssetsView(ModelViewSet):
@@ -13,7 +14,7 @@ class AssetsView(ModelViewSet):
     queryset = Asset.objects.all()
 
 
-class AllPricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
+class UpdateAllPricesAndRatesView(mixins.ListModelMixin, GenericViewSet):
     serializer_class = PricesAndRatesUpdateSerializer
 
     def list(self, request, *args, **kwargs):
@@ -43,70 +44,32 @@ class AllPricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
 
         return Response(data=response_data)
 
-# class PricesAndRatesUpdateView(mixins.ListModelMixin, GenericViewSet):
-#     serializer_class = AllAssetsPricesUpdateSerializer
-#
-#     queryset = Asset.objects.values('id',
-#                                     'ticker',
-#                                     'stock_market__name',
-#                                     'asset_class__name',
-#                                     'currency_of_price__name',
-#                                     'one_unit_current_price_in_currency')
-#
-#     def list(self, request, *args, **kwargs):
-#         queryset = self.filter_queryset(self.get_queryset())
-#
-#         new_prices = []
-#         for asset in queryset:
-#             print(asset.get('id'))
-#             print(asset.get('ticker'))
-#             print(asset.get('stock_market__name'))
-#             print(asset.get('asset_class__name'))
-#             print(asset.get('currency_of_price__name'))
-#             try:
-#                 new_price = take_price(ticker=asset.get('ticker'),
-#                                        stock_market=asset.get('stock_market__name'),
-#                                        asset_class=asset.get('asset_class__name'),
-#                                        currency=asset.get('currency_of_price__name'))
-#                 new_prices.append({'id': asset['id'],
-#                                    'one_unit_current_price_in_currency': new_price,
-#                                    'error': None})
-#
-#             except Exception as err:
-#                 err_msg = f"Не удалось обновить цену актива '{asset['ticker']}' - id: '{asset['id']}'. " \
-#                           f"Ошибка: {err}"
-#                 new_prices.append({'id': asset['id'],
-#                                    'one_unit_current_price_in_currency':
-#                                        asset['one_unit_current_price_in_currency'],
-#                                    'error': err_msg})
-#
-#                 # TODO: !! выводить пользователю на сайт
-#
-#         # print('---new_prices:', new_prices)
-#
-#
+
+class RecalculateAllAssetsDataView(mixins.ListModelMixin, GenericViewSet):
+    serializer_class = PricesAndRatesUpdateSerializer
+
+    def list(self, request, *args, **kwargs):
+        all_assets = Asset.objects.all()
+        errors_recalculate = []
+        for asset in all_assets:
+            try:
+                full_recalculation_single_asset(asset=asset)
+            except Exception as err:
+                err_msg = f"Не удалось пересчитать данные. Ошибка: {err}"
+                errors_recalculate.append({'id': asset.id, 'name': asset.name, 'error': err_msg})
 
 
-# class OneAssetPriceUpdateView(mixins.RetrieveModelMixin, GenericViewSet):
-#     serializer_class = AssetsSerializer
-#
-#     def get_object(self):
-#         pk = self.kwargs['pk']
-#         try:
-#             return Asset.objects.get(pk=pk)
-#         except Asset.DoesNotExist:
-#             raise NotFound(f"Актив с id '{pk}' не найден")
-#
-#     def retrieve(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#
-#         new_price = take_price(ticker=instance.ticker,
-#                                stock_market=instance.stock_market.name,
-#                                asset_class=instance.asset_class.name,
-#                                currency=instance.currency_of_price.name)
-#
-#         instance.one_unit_current_price_in_currency = new_price
-#         instance.save()
-#
-#         serializer = self.get_serializer(instance)
-#         return Response(serializer.data)
+        # queryset = Asset.objects.all()
+        # page = self.paginate_queryset(queryset)
+        # if page is not None:
+        #     serializer = self.get_serializer(page, many=True)
+        #     return self.get_paginated_response(serializer.data)
+        #
+        # serializer = self.get_serializer(queryset, many=True)
+        # return Response(serializer.data)
+        response_data = "Данные Активов успешно пересчитаны"
+        if errors_recalculate:
+            response_data = f"Ошибки во время пересчета данных по Активам: {errors_recalculate}"
+        return Response(data=response_data)
+
+
