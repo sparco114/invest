@@ -8,8 +8,11 @@ def take_price_google(ticker: str, stock_market: str) -> str or None:
     :return: цена актива или None, если не удалось получить
     """
 
-    if stock_market == 'HKEX':
-        ticker = f'{ticker}:HKG'
+    if stock_market:
+        if stock_market == 'HKEX':
+            ticker = f'{ticker}:HKG'
+        else:
+            ticker = f'{ticker}:{stock_market}'
     url_price = f"https://www.google.com/finance/quote/{ticker}"
 
     try:

@@ -1,7 +1,10 @@
+import asyncio
+
 from rest_framework import mixins, status
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
+# from probe import all_assets_prices_update_probe
 from src.assets.models import Asset
 from src.assets.serializer import AssetsSerializer, PricesAndRatesUpdateSerializer
 from src.services.take_exchange_rates import all_currencies_rates_update
@@ -24,6 +27,12 @@ class UpdateAllPricesAndRatesView(mixins.ListModelMixin, GenericViewSet):
 
         errors_prices_update = all_assets_prices_update()
         # errors_prices_update = None
+
+        # print("---Начало update_data")
+        # asyncio.run(all_assets_prices_update_probe())
+        # print("---Конец update_data")
+
+
 
         queryset = Asset.objects.values('id', 'one_unit_current_price_in_currency')
 
