@@ -13,7 +13,7 @@ class Transaction(models.Model):
 
     date = models.DateTimeField()
     name = models.CharField(max_length=20, choices=TRANSACTION_NAMES)
-    ticker = models.CharField(max_length=5)
+    ticker = models.CharField(max_length=15)
     asset = models.ForeignKey(Asset, max_length=5, on_delete=models.CASCADE, related_name='transactions')
     asset_name = models.CharField(max_length=40)
     portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)

@@ -7,7 +7,7 @@ from src.services.take_exchange_rates import take_current_exchange_rate_to_rub_f
 
 class Asset(models.Model):
     # TODO: подумать нужно ли здесь тоже добавить поля 'дата создания' и 'дата последнего изменения'
-    ticker = models.CharField(max_length=5)
+    ticker = models.CharField(max_length=15)
     name = models.CharField(max_length=50)
     portfolio_name = models.ForeignKey(Portfolio, on_delete=models.SET_NULL, blank=True, null=True)
     agent = models.ForeignKey(Agent, on_delete=models.PROTECT)  # посредник
