@@ -1,3 +1,4 @@
+import asyncio
 import decimal
 import pandas as pd
 from rest_framework import status
@@ -9,7 +10,7 @@ from src.fin_attributes.models import Portfolio, Agent, StockMarket, AssetClass,
 from src.services.take_exchange_rates import take_current_exchange_rate_to_rub_from_api
 from src.transactions.models import Transaction
 from src.transactions.serializer import TransactionsSerializer
-from src.services.take_prices.take_prices import take_price
+from src.services.take_prices.take_prices import take_price_async
 
 
 def processing_asset_when_transaction_create(transaction):
@@ -134,10 +135,12 @@ def processing_asset_when_transaction_create(transaction):
                                                  f"только {asset_total_quantity_old_value}")
 
         # обновляем текущую стоимость актива, получая со стороннего API
-        asset.one_unit_current_price_in_currency = take_price(ticker=asset.ticker,
-                                                              stock_market=asset.stock_market.name,
-                                                              asset_class=asset.asset_class.name,
-                                                              currency=asset.currency_of_price.name)
+        take_price_response = asyncio.run(take_price_async(asset_id=asset.id,
+                                                           ticker=asset.ticker,
+                                                           stock_market=asset.stock_market.name,
+                                                           asset_class=asset.asset_class.name,
+                                                           currency=asset.currency_of_price.name))
+        asset.one_unit_current_price_in_currency = take_price_response[1]
         asset.save()
         return asset  # возвращаем Актив с обновленными данными
 
@@ -168,7 +171,8 @@ def processing_asset_when_transaction_create(transaction):
         # получаем текущий курс валюты
         current_exchange_rate_to_rub_for_currency_price = \
             take_current_exchange_rate_to_rub_from_api(transaction_currency_of_price)
-        print("---получили current_exchange_rate_to_rub_for_currency_price", current_exchange_rate_to_rub_for_currency_price)
+        print("---получили current_exchange_rate_to_rub_for_currency_price",
+              current_exchange_rate_to_rub_for_currency_price)
 
         # если валюта цены и валюта покупки одинаковая - то создаем валюту в БД один раз
         if transaction_currency_of_price == transaction_currency_of_asset:
@@ -232,10 +236,12 @@ def processing_asset_when_transaction_create(transaction):
             total_quantity=transaction_quantity,
 
             # текущую стоимость актива получаем со стороннего API
-            one_unit_current_price_in_currency=take_price(ticker=transaction_ticker,
-                                                          stock_market=transaction_stock_market.name,
-                                                          asset_class=transaction_asset_class.name,
-                                                          currency=transaction_currency_of_price.name),
+            one_unit_current_price_in_currency=asyncio.run(
+                take_price_async(asset_id=None,
+                                 ticker=transaction_ticker,
+                                 stock_market=transaction_stock_market.name,
+                                 asset_class=transaction_asset_class.name,
+                                 currency=transaction_currency_of_price.name))[1],
             # TODO: подумать где вычитать расходы - здесь или где-то в другом месте
             total_expenses_in_currency=transaction_total_price_in_currency,
             total_expenses_in_rub=transaction_total_price_in_rub,
@@ -529,4 +535,3 @@ class TransactionsView(ModelViewSet):
         print("---ОПЕРАЦИЯ УДАЛЕНА в perform_destroy")
 
         return Response(status=status.HTTP_204_NO_CONTENT)
-

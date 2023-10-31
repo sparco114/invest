@@ -1,5 +1,6 @@
 import asyncio
 
+from asgiref.sync import sync_to_async
 from rest_framework import mixins, status
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
@@ -8,7 +9,7 @@ from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from src.assets.models import Asset
 from src.assets.serializer import AssetsSerializer, PricesAndRatesUpdateSerializer
 from src.services.take_exchange_rates import all_currencies_rates_update
-from src.services.take_prices.take_prices import all_assets_prices_update
+from src.services.take_prices.take_prices import all_assets_prices_update_async
 from src.transactions.views import full_recalculation_single_asset
 
 
@@ -22,15 +23,15 @@ class UpdateAllPricesAndRatesView(mixins.ListModelMixin, GenericViewSet):
 
     def list(self, request, *args, **kwargs):
 
-        errors_rates_update = all_currencies_rates_update()
-        # errors_rates_update = None
+        # errors_rates_update = all_currencies_rates_update()
+        errors_rates_update = None
 
-        errors_prices_update = all_assets_prices_update()
-        # errors_prices_update = None
+        # errors_prices_update = asyncio.run(all_assets_prices_update_async())
+        errors_prices_update = None
 
-        # print("---Начало update_data")
-        # asyncio.run(all_assets_prices_update_probe())
-        # print("---Конец update_data")
+        print("---Начало update_data")
+        asyncio.run(all_assets_prices_update_async())
+        print("---Конец update_data")
 
 
 
