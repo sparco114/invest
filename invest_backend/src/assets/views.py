@@ -1,14 +1,11 @@
 import asyncio
 
-from asgiref.sync import sync_to_async
-from rest_framework import mixins, status
+from rest_framework import mixins
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
-# from probe import all_assets_prices_update_probe
 from src.assets.models import Asset
 from src.assets.serializer import AssetsSerializer, PricesAndRatesUpdateSerializer
-from src.services.take_exchange_rates import all_currencies_rates_update
 from src.services.take_prices.take_prices import all_assets_prices_update_async
 from src.transactions.views import full_recalculation_single_asset
 
@@ -22,19 +19,15 @@ class UpdateAllPricesAndRatesView(mixins.ListModelMixin, GenericViewSet):
     serializer_class = PricesAndRatesUpdateSerializer
 
     def list(self, request, *args, **kwargs):
-
+        # обновление курсов всех Валют в БД со сторонних сервисов
         # errors_rates_update = all_currencies_rates_update()
-        errors_rates_update = None
+        rates_update_response = None
 
-        # errors_prices_update = asyncio.run(all_assets_prices_update_async())
-        errors_prices_update = None
+        # обновление текущих цен всех Активов в БД со сторонних сервисов
+        prices_update_response = asyncio.run(all_assets_prices_update_async())
+        # prices_update_response = None
 
-        print("---Начало update_data")
-        asyncio.run(all_assets_prices_update_async())
-        print("---Конец update_data")
-
-
-
+        # получение обновленных цен Активов из БД
         queryset = Asset.objects.values('id', 'one_unit_current_price_in_currency')
 
         page = self.paginate_queryset(queryset)
@@ -44,13 +37,9 @@ class UpdateAllPricesAndRatesView(mixins.ListModelMixin, GenericViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
 
-        response_data = {'rates': serializer.data}
-
-        if errors_rates_update:
-            response_data['errors_rates_update'] = errors_rates_update
-
-        if errors_prices_update:
-            response_data['errors_prices_update'] = errors_prices_update
+        response_data = {'new_assets_prices': serializer.data,
+                         'rates_update_response': rates_update_response,
+                         'prices_update_response': prices_update_response}
 
         return Response(data=response_data)
 
@@ -68,7 +57,6 @@ class RecalculateAllAssetsDataView(mixins.ListModelMixin, GenericViewSet):
                 err_msg = f"Не удалось пересчитать данные. Ошибка: {err}"
                 errors_recalculate.append({'id': asset.id, 'name': asset.name, 'error': err_msg})
 
-
         # queryset = Asset.objects.all()
         # page = self.paginate_queryset(queryset)
         # if page is not None:
@@ -81,5 +69,3 @@ class RecalculateAllAssetsDataView(mixins.ListModelMixin, GenericViewSet):
         if errors_recalculate:
             response_data = f"Ошибки во время пересчета данных по Активам: {errors_recalculate}"
         return Response(data=response_data)
-
-

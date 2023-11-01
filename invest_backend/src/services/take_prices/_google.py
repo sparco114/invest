@@ -3,12 +3,18 @@ import requests
 from bs4 import BeautifulSoup
 
 
-async def take_price_google_async(ticker: str, stock_market: str):
-    # print(f"Начало take_price_google асинхронной функции с {ticker}, {stock_market}")
+async def take_price_google_async(ticker: str, stock_market: str) -> str:
+    """Получение цены Актива путем парсинга google.com.
+    :param ticker: тикер Актива
+    :param stock_market: биржа приобретения Актива
+    :return: текущая цена Актива
+    """
 
     if stock_market:
+        # если биржа HKEX, то добавляем к тикеру необходимый текст
         if stock_market == 'HKEX':
             ticker = f'{ticker}:HKG'
+        # в остальных случаях добавляем название биржи
         else:
             ticker = f'{ticker}:{stock_market}'
     url_price = f"https://www.google.com/finance/quote/{ticker}"
@@ -20,8 +26,11 @@ async def take_price_google_async(ticker: str, stock_market: str):
                 soup = BeautifulSoup(markup=content, features="html.parser")
                 name_block = soup.find("div", {"class": "zzDege"})
                 price_block = soup.find("div", {"class": "YMlKec fxKbKc"})
+
+                # если не получены данные о цене или наименовании - поднимаем ошибку, чтоб не возвращать None
                 if not name_block or not price_block:
                     raise ValueError()
+
                 name = name_block.text
                 price = price_block.text[1:]
                 # print("name:", name)
@@ -30,7 +39,7 @@ async def take_price_google_async(ticker: str, stock_market: str):
                 return price
     except Exception as google_err:
         google_err.args += (f"Адрес запроса для получения Цены и Наименования: '{url_price}'. "
-                            f"Статус ответа: ''",)
+                            f"Статус ответа: '{response.status}'",)
         raise google_err
 
 # def take_price_google(ticker: str, stock_market: str) -> str or None:
