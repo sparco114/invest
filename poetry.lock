@@ -375,6 +375,17 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 six = ">=1.5"
 
 [[package]]
+name = "python-dotenv"
+version = "1.0.0"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.extras]
+cli = ["click (>=5.0)"]
+
+[[package]]
 name = "python3-openid"
 version = "3.2.0"
 description = "OpenID support for modern servers and consumers."
@@ -540,7 +551,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "3.10"
-content-hash = "c217bb8774bc5bda4a302f9f1387c883cb51a980f84512ee4b89b0336cd9e2f2"
+content-hash = "ea8fd8cfa53a3ffd53ff30971a7bce2b115bc61486387c1067215a804c78827e"
 
 [metadata.files]
 aiohttp = []
@@ -572,6 +583,7 @@ psycopg2 = []
 pycparser = []
 pyjwt = []
 python-dateutil = []
+python-dotenv = []
 python3-openid = []
 pytz = []
 requests = []
